@@ -14,6 +14,7 @@ import { useNewThreadHandler } from "../../hooks/useHandleNewThread";
 import { runPrimaryHttp } from "../../lib/runtime";
 import { newMessageId } from "../../lib/utils";
 import { resolveDefaultProviderModelSelection } from "../../providerInstances";
+import { useRelewiseSettings } from "../../relewiseSettings";
 import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
 import { useProjects } from "../../state/entities";
 import { primaryServerProvidersAtom } from "../../state/server";
@@ -31,7 +32,12 @@ import {
 } from "../ui/dialog";
 import { toastManager } from "../ui/toast";
 import { waitForStartedServerThread } from "../ChatView.logic";
-import { readRelewiseProjectMatch, writeRelewiseProjectMatch } from "./relewiseProjectMatches";
+import {
+  readRelewiseProjectMatch,
+  selectRelewiseProjectLabels,
+  writeRelewiseProjectMatch,
+} from "./relewiseProjectMatches";
+import { RelewiseCardDetailsDialog } from "./RelewiseCardDetailsDialog";
 
 type LoadState =
   | { readonly status: "loading" }
@@ -42,6 +48,7 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [refreshing, setRefreshing] = useState(false);
   const [startingCardId, setStartingCardId] = useState<string | null>(null);
+  const [detailsCard, setDetailsCard] = useState<RelewiseBacklogCard | null>(null);
   const [pickerCard, setPickerCard] = useState<RelewiseBacklogCard | null>(null);
   const projects = useProjects();
   const newThread = useNewThreadHandler();
@@ -50,6 +57,7 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
   const { environments } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const primaryProviders = useAtomValue(primaryServerProvidersAtom);
+  const { userEmail } = useRelewiseSettings();
 
   useEffect(() => {
     let active = true;
@@ -156,6 +164,26 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
         },
       });
       if (result._tag === "Failure") throw squashAtomCommandFailure(result);
+      try {
+        const moved = await runPrimaryHttp(
+          PrimaryEnvironmentHttpClient.pipe(
+            Effect.flatMap((client) =>
+              client.relewise.startCard({
+                headers: {},
+                payload: { cardId: card.id, userEmail },
+              }),
+            ),
+          ),
+        );
+        setState({ status: "ready", cards: moved.cards });
+      } catch (error) {
+        toastManager.add({
+          type: "warning",
+          title: "Chat started, but Trello was not updated",
+          description:
+            error instanceof Error ? error.message : "The card could not be moved to In Progress.",
+        });
+      }
       markPromotedDraftThreadByRef(threadRef);
       await waitForStartedServerThread(threadRef);
       await navigate({
@@ -174,8 +202,17 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
   };
 
   const startCard = (card: RelewiseBacklogCard) => {
-    if (card.labels.length === 1 && typeof window !== "undefined") {
-      const match = readRelewiseProjectMatch(window.localStorage, card.labels[0]!.id);
+    if (userEmail.length === 0) {
+      toastManager.add({
+        type: "error",
+        title: "Relewise email required",
+        description: "Add your email in Settings → Relewise before starting this card.",
+      });
+      return;
+    }
+    const projectLabels = selectRelewiseProjectLabels(card.labels);
+    if (projectLabels.length === 1 && typeof window !== "undefined") {
+      const match = readRelewiseProjectMatch(window.localStorage, projectLabels[0]!.id);
       const project = match
         ? projects.find(
             (candidate) =>
@@ -193,8 +230,9 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
   const selectProject = (project: (typeof projects)[number]) => {
     const card = pickerCard;
     if (card === null) return;
-    if (card.labels.length === 1 && typeof window !== "undefined") {
-      writeRelewiseProjectMatch(window.localStorage, card.labels[0]!.id, {
+    const projectLabels = selectRelewiseProjectLabels(card.labels);
+    if (projectLabels.length === 1 && typeof window !== "undefined") {
+      writeRelewiseProjectMatch(window.localStorage, projectLabels[0]!.id, {
         environmentId: project.environmentId,
         projectId: project.id,
       });
@@ -229,12 +267,12 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
 
   return (
     <section className="min-h-0 border-t border-sidebar-border/70 pt-2" aria-label="Trello">
-      <div className="mb-1 flex items-center px-2 text-xs font-medium text-sidebar-muted-foreground">
+      <div className="mb-1 grid grid-cols-[minmax(0,1fr)_2rem_1.25rem] items-center gap-2 px-2 text-xs font-medium text-sidebar-muted-foreground">
         <span>Trello</span>
-        <span className="ml-auto tabular-nums opacity-60">{state.cards.length}</span>
+        <span className="text-right tabular-nums opacity-60">{state.cards.length}</span>
         <button
           type="button"
-          className="ml-1 rounded p-1 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
+          className="flex size-5 items-center justify-center rounded hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
           onClick={refresh}
           disabled={refreshing}
           aria-label="Refresh Trello"
@@ -245,53 +283,84 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
       </div>
       <ul className="max-h-72 space-y-0.5 overflow-y-auto">
         {state.cards.map((card) => (
-          <li key={card.id} className="group relative rounded-md hover:bg-sidebar-row-hover">
-            <div className="w-full px-2 py-1.5 pr-8 text-left" title={card.title}>
-              <span className="flex items-start text-xs text-sidebar-foreground">
-                <span className="min-w-0 flex-1 line-clamp-2">{card.title}</span>
-              </span>
-              {card.labels.length > 0 ? (
-                <span className="mt-1 flex flex-wrap gap-1">
-                  {card.labels.map((label) => (
-                    <span
-                      key={label.id}
-                      className="rounded-sm bg-sidebar-accent px-1 py-0.5 text-[10px] leading-none text-sidebar-muted-foreground"
-                      style={{
-                        ...(label.backgroundColor === null
-                          ? {}
-                          : { backgroundColor: label.backgroundColor }),
-                        ...(label.textColor === null ? {} : { color: label.textColor }),
-                      }}
-                    >
-                      {label.name}
-                    </span>
-                  ))}
-                </span>
-              ) : null}
-            </div>
+          <li
+            key={card.id}
+            className="group/trello-card grid min-h-8 grid-cols-[minmax(0,1fr)_2rem_1.25rem] items-center gap-2 rounded-md px-2 py-1.5 hover:bg-sidebar-row-hover"
+            role="button"
+            tabIndex={0}
+            onClick={() => setDetailsCard(card)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              setDetailsCard(card);
+            }}
+          >
+            <span className="min-w-0 truncate text-xs text-sidebar-foreground" title={card.title}>
+              {card.title}
+            </span>
+            <span className="mt-0.5 flex self-start items-center justify-end gap-0.5">
+              {card.labels.map((label) => (
+                <span
+                  key={label.id}
+                  className="h-4 w-1.5 rounded-none bg-sidebar-accent ring-1 ring-inset ring-black/10"
+                  style={
+                    label.backgroundColor === null
+                      ? undefined
+                      : { backgroundColor: label.backgroundColor }
+                  }
+                  title={label.name}
+                  aria-label={label.name}
+                />
+              ))}
+            </span>
             <button
               type="button"
-              className="absolute right-1 top-1 rounded p-1 text-sidebar-muted-foreground opacity-60 hover:bg-sidebar-accent hover:text-sidebar-foreground hover:opacity-100 focus-visible:opacity-100"
-              onClick={() => startCard(card)}
+              className="flex size-5 items-center justify-center rounded text-sidebar-muted-foreground opacity-0 hover:bg-sidebar-accent hover:text-sidebar-foreground group-hover/trello-card:opacity-100 focus-visible:opacity-100"
+              onClick={(event) => {
+                event.stopPropagation();
+                startCard(card);
+              }}
+              onKeyDown={(event) => event.stopPropagation()}
               disabled={startingCardId !== null}
-              aria-label={`Start chat for ${card.title}`}
-              title="Start chat"
+              aria-label={`Start working on this: ${card.title}`}
+              title="Start working on this"
             >
               <PlayIcon className="size-3" fill="currentColor" />
             </button>
           </li>
         ))}
       </ul>
+      <RelewiseCardDetailsDialog
+        card={detailsCard}
+        onOpenChange={(open) => !open && setDetailsCard(null)}
+        footer={
+          <Button
+            onClick={() => {
+              const card = detailsCard;
+              if (card === null) return;
+              setDetailsCard(null);
+              startCard(card);
+            }}
+            disabled={detailsCard === null || startingCardId !== null}
+          >
+            <PlayIcon className="size-4" fill="currentColor" />
+            Start working on this
+          </Button>
+        }
+      />
       <Dialog open={pickerCard !== null} onOpenChange={(open) => !open && setPickerCard(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Select a project</DialogTitle>
             <DialogDescription>
-              {pickerCard?.labels.length === 1
-                ? `This choice will be remembered for the ${pickerCard.labels[0]?.name ?? "card"} label.`
-                : pickerCard?.labels.length === 0
-                  ? "This card has no label, so its project will not be remembered."
-                  : "Cards with multiple labels always ask which project to use."}
+              {(() => {
+                const projectLabels = selectRelewiseProjectLabels(pickerCard?.labels ?? []);
+                return projectLabels.length === 1
+                  ? `This choice will be remembered for the ${projectLabels[0]?.name ?? "card"} label.`
+                  : projectLabels.length === 0
+                    ? "This card has no project label, so its project will not be remembered."
+                    : "Cards with multiple project labels always ask which project to use.";
+              })()}
             </DialogDescription>
           </DialogHeader>
           <DialogPanel className="max-h-80 space-y-1">

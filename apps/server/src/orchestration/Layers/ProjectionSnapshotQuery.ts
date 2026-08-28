@@ -58,6 +58,7 @@ import {
   encodeThreadDetailPageCursor,
 } from "../threadDetailCursor.ts";
 import * as RepositoryIdentityResolver from "../../project/RepositoryIdentityResolver.ts";
+import { trelloCardUrlFromFirstMessage } from "../trelloCardUrl.ts";
 import { ORCHESTRATION_PROJECTOR_NAMES } from "./ProjectionPipeline.ts";
 import {
   ProjectionSnapshotQuery,
@@ -91,6 +92,7 @@ const ProjectionThreadDbRowSchema = ProjectionThread.mapFields(
   Struct.assign({
     modelSelection: Schema.fromJsonString(ModelSelection),
     linkedPullRequest: Schema.NullOr(Schema.fromJsonString(ThreadLinkedPullRequest)),
+    firstUserMessageText: Schema.NullOr(Schema.String),
   }),
 );
 const ProjectionThreadActivityDbRowSchema = ProjectionThreadActivity.mapFields(
@@ -419,6 +421,13 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           thread_id AS "threadId",
           project_id AS "projectId",
           title,
+          (
+            SELECT text
+            FROM projection_thread_messages
+            WHERE thread_id = projection_threads.thread_id AND role = 'user'
+            ORDER BY created_at ASC, message_id ASC
+            LIMIT 1
+          ) AS "firstUserMessageText",
           model_selection_json AS "modelSelection",
           runtime_mode AS "runtimeMode",
           interaction_mode AS "interactionMode",
@@ -457,6 +466,13 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           thread_id AS "threadId",
           project_id AS "projectId",
           title,
+          (
+            SELECT text
+            FROM projection_thread_messages
+            WHERE thread_id = projection_threads.thread_id AND role = 'user'
+            ORDER BY created_at ASC, message_id ASC
+            LIMIT 1
+          ) AS "firstUserMessageText",
           model_selection_json AS "modelSelection",
           runtime_mode AS "runtimeMode",
           interaction_mode AS "interactionMode",
@@ -497,6 +513,13 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           thread_id AS "threadId",
           project_id AS "projectId",
           title,
+          (
+            SELECT text
+            FROM projection_thread_messages
+            WHERE thread_id = projection_threads.thread_id AND role = 'user'
+            ORDER BY created_at ASC, message_id ASC
+            LIMIT 1
+          ) AS "firstUserMessageText",
           model_selection_json AS "modelSelection",
           runtime_mode AS "runtimeMode",
           interaction_mode AS "interactionMode",
@@ -941,6 +964,13 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           thread_id AS "threadId",
           project_id AS "projectId",
           title,
+          (
+            SELECT text
+            FROM projection_thread_messages
+            WHERE thread_id = projection_threads.thread_id AND role = 'user'
+            ORDER BY created_at ASC, message_id ASC
+            LIMIT 1
+          ) AS "firstUserMessageText",
           model_selection_json AS "modelSelection",
           runtime_mode AS "runtimeMode",
           interaction_mode AS "interactionMode",
@@ -2050,6 +2080,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                       id: row.threadId,
                       projectId: row.projectId,
                       title: row.title,
+                      trelloCardUrl: trelloCardUrlFromFirstMessage(row.firstUserMessageText),
                       modelSelection: row.modelSelection,
                       runtimeMode: row.runtimeMode,
                       interactionMode: row.interactionMode,
@@ -2199,6 +2230,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                   id: row.threadId,
                   projectId: row.projectId,
                   title: row.title,
+                  trelloCardUrl: trelloCardUrlFromFirstMessage(row.firstUserMessageText),
                   modelSelection: row.modelSelection,
                   runtimeMode: row.runtimeMode,
                   interactionMode: row.interactionMode,
@@ -2482,6 +2514,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         id: threadRow.value.threadId,
         projectId: threadRow.value.projectId,
         title: threadRow.value.title,
+        trelloCardUrl: trelloCardUrlFromFirstMessage(threadRow.value.firstUserMessageText),
         modelSelection: threadRow.value.modelSelection,
         runtimeMode: threadRow.value.runtimeMode,
         interactionMode: threadRow.value.interactionMode,

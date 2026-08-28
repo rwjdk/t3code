@@ -554,10 +554,35 @@ export const RelewiseBacklogLabel = Schema.Struct({
 });
 export type RelewiseBacklogLabel = typeof RelewiseBacklogLabel.Type;
 
+export const RelewiseBacklogChecklistItem = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  isComplete: Schema.Boolean,
+  dueAt: Schema.NullOr(Schema.String),
+});
+export type RelewiseBacklogChecklistItem = typeof RelewiseBacklogChecklistItem.Type;
+
+export const RelewiseBacklogChecklist = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  items: Schema.Array(RelewiseBacklogChecklistItem),
+});
+export type RelewiseBacklogChecklist = typeof RelewiseBacklogChecklist.Type;
+
 export const RelewiseBacklogCard = Schema.Struct({
   id: Schema.String,
   title: Schema.String,
+  description: Schema.NullOr(Schema.String),
+  boardName: Schema.String,
+  listName: Schema.String,
   labels: Schema.Array(RelewiseBacklogLabel),
+  checklists: Schema.Array(RelewiseBacklogChecklist),
+  createdAt: Schema.String,
+  startAt: Schema.NullOr(Schema.String),
+  dueAt: Schema.NullOr(Schema.String),
+  isBlocked: Schema.Boolean,
+  blockedReason: Schema.NullOr(Schema.String),
+  isDone: Schema.Boolean,
   url: Schema.String,
 });
 export type RelewiseBacklogCard = typeof RelewiseBacklogCard.Type;
@@ -567,7 +592,24 @@ export const RelewiseBacklogResult = Schema.Struct({
 });
 export type RelewiseBacklogResult = typeof RelewiseBacklogResult.Type;
 
+export const RelewiseStartCardInput = Schema.Struct({
+  cardId: Schema.String,
+  userEmail: Schema.String,
+});
+export type RelewiseStartCardInput = typeof RelewiseStartCardInput.Type;
+
 export class EnvironmentRelewiseHttpApi extends HttpApiGroup.make("relewise")
+  .add(
+    HttpApiEndpoint.get("trelloCards", "/api/relewise/trello/cards", {
+      headers: OptionalBearerHeaders,
+      success: RelewiseBacklogResult,
+      error: [
+        EnvironmentAuthInvalidError,
+        EnvironmentScopeRequiredError,
+        EnvironmentHttpInternalServerError,
+      ],
+    }).middleware(EnvironmentAuthenticatedAuth),
+  )
   .add(
     HttpApiEndpoint.get("backlog", "/api/relewise/backlog", {
       headers: OptionalBearerHeaders,
@@ -582,6 +624,18 @@ export class EnvironmentRelewiseHttpApi extends HttpApiGroup.make("relewise")
   .add(
     HttpApiEndpoint.post("refreshBacklog", "/api/relewise/backlog/refresh", {
       headers: OptionalBearerHeaders,
+      success: RelewiseBacklogResult,
+      error: [
+        EnvironmentAuthInvalidError,
+        EnvironmentScopeRequiredError,
+        EnvironmentHttpInternalServerError,
+      ],
+    }).middleware(EnvironmentAuthenticatedAuth),
+  )
+  .add(
+    HttpApiEndpoint.post("startCard", "/api/relewise/backlog/start", {
+      headers: OptionalBearerHeaders,
+      payload: RelewiseStartCardInput,
       success: RelewiseBacklogResult,
       error: [
         EnvironmentAuthInvalidError,

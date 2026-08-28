@@ -1,8 +1,9 @@
-import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
+import type { EnvironmentId, ProjectId, RelewiseBacklogLabel } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
 const STORAGE_KEY = "t3code:relewise-label-project-matches:v1";
+const NON_PROJECT_LABEL_NAMES = new Set(["bug", "operations", "blocked"]);
 
 const StoredProjectMatch = Schema.Struct({
   environmentId: Schema.String,
@@ -14,6 +15,12 @@ const StoredProjectMatches = Schema.Record(Schema.String, StoredProjectMatch);
 export interface RelewiseProjectMatch {
   readonly environmentId: EnvironmentId;
   readonly projectId: ProjectId;
+}
+
+export function selectRelewiseProjectLabels(
+  labels: ReadonlyArray<RelewiseBacklogLabel>,
+): ReadonlyArray<RelewiseBacklogLabel> {
+  return labels.filter((label) => !NON_PROJECT_LABEL_NAMES.has(label.name.trim().toLowerCase()));
 }
 
 export function readRelewiseProjectMatch(

@@ -90,4 +90,15 @@ describe("searchSettings", () => {
       targetId: "appearance",
     });
   });
+
+  it("routes Relewise preferences to Relewise Settings", () => {
+    expect(searchSettings("user email")[0]).toMatchObject({
+      id: "relewise-user-email",
+      to: "/settings/relewise",
+    });
+    expect(searchSettings("commit & push")[0]).toMatchObject({
+      id: "relewise-show-commit-and-push",
+      to: "/settings/relewise",
+    });
+  });
 });

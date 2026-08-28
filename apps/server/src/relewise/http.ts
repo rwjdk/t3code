@@ -1,4 +1,5 @@
 import {
+  AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   EnvironmentHttpApi,
   EnvironmentHttpInternalServerError,
@@ -26,6 +27,14 @@ export const relewiseHttpApiLayer = HttpApiBuilder.group(
       );
     return handlers
       .handle(
+        "trelloCards",
+        Effect.fn("environment.relewise.trelloCards")(function* (args) {
+          yield* annotateEnvironmentRequest(args.endpoint.name);
+          yield* requireEnvironmentScope(AuthOrchestrationReadScope);
+          return yield* handleLoad(backlog.allCards);
+        }),
+      )
+      .handle(
         "backlog",
         Effect.fn("environment.relewise.backlog")(function* (args) {
           yield* annotateEnvironmentRequest(args.endpoint.name);
@@ -39,6 +48,14 @@ export const relewiseHttpApiLayer = HttpApiBuilder.group(
           yield* annotateEnvironmentRequest(args.endpoint.name);
           yield* requireEnvironmentScope(AuthOrchestrationReadScope);
           return yield* handleLoad(backlog.refresh);
+        }),
+      )
+      .handle(
+        "startCard",
+        Effect.fn("environment.relewise.startCard")(function* (args) {
+          yield* annotateEnvironmentRequest(args.endpoint.name);
+          yield* requireEnvironmentScope(AuthOrchestrationOperateScope);
+          return yield* handleLoad(backlog.startCard(args.payload.cardId, args.payload.userEmail));
         }),
       );
   }),

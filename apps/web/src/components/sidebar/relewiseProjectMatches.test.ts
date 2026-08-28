@@ -1,7 +1,11 @@
 import { describe, expect, it } from "@effect/vitest";
 import { EnvironmentId, ProjectId } from "@t3tools/contracts";
 
-import { readRelewiseProjectMatch, writeRelewiseProjectMatch } from "./relewiseProjectMatches";
+import {
+  readRelewiseProjectMatch,
+  selectRelewiseProjectLabels,
+  writeRelewiseProjectMatch,
+} from "./relewiseProjectMatches";
 
 function storage(initial: string | null = null) {
   let value = initial;
@@ -14,6 +18,23 @@ function storage(initial: string | null = null) {
 }
 
 describe("Relewise project matches", () => {
+  it("excludes workflow labels from project matching", () => {
+    const label = (id: string, name: string) => ({
+      id,
+      name,
+      textColor: null,
+      backgroundColor: null,
+    });
+    expect(
+      selectRelewiseProjectLabels([
+        label("hub", "Hub"),
+        label("bug", "Bug"),
+        label("operations", " operations "),
+        label("blocked", "BLOCKED"),
+      ]),
+    ).toEqual([label("hub", "Hub")]);
+  });
+
   it("round-trips a label match", () => {
     const target = storage();
     writeRelewiseProjectMatch(target, "label-1", {

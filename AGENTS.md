@@ -1,3 +1,14 @@
+# Fork Specific Instruction
+
+## Additions
+
+- Trello Integration via Relewise Hub
+
+## Rules
+
+- Always test via Electron App
+- User is testing app; do not use Computer Use
+
 # T3 Code
 
 T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provider CLIs (Codex, Claude Code, Cursor, Grok, OpenCode) and serves web, desktop, and mobile clients.

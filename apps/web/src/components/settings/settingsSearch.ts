@@ -2,6 +2,7 @@ import { isElectron } from "~/env";
 
 export type SettingsPath =
   | "/settings/general"
+  | "/settings/relewise"
   | "/settings/appearance"
   | "/settings/keybindings"
   | "/settings/providers"
@@ -26,6 +27,7 @@ export interface SettingsSearchItem {
  */
 export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/general": "General",
+  "/settings/relewise": "Relewise Settings",
   "/settings/appearance": "Appearance",
   "/settings/keybindings": "Keybindings",
   "/settings/providers": "Providers",
@@ -42,6 +44,21 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
  * here once instead of separately in the panel and the index.
  */
 export const SETTINGS_SEARCH_ITEMS = [
+  {
+    id: "relewise-user-email",
+    title: "User Email",
+    to: "/settings/relewise",
+  },
+  {
+    id: "relewise-show-open-in-editor",
+    title: "Show Open in editor",
+    to: "/settings/relewise",
+  },
+  {
+    id: "relewise-show-commit-and-push",
+    title: "Show Commit & push",
+    to: "/settings/relewise",
+  },
   {
     id: "color-scheme",
     title: "Color scheme",

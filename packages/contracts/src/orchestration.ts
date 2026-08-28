@@ -514,6 +514,9 @@ export const OrchestrationThreadShell = Schema.Struct({
   id: ThreadId,
   projectId: ProjectId,
   title: TrimmedNonEmptyString,
+  // Canonical URL detected in the first user message. Optional for compatibility
+  // with older servers and cached shell snapshots.
+  trelloCardUrl: Schema.optional(Schema.NullOr(Schema.String)),
   modelSelection: ModelSelection,
   runtimeMode: RuntimeMode,
   interactionMode: ProviderInteractionMode.pipe(

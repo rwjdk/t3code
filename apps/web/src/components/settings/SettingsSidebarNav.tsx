@@ -11,6 +11,7 @@ import {
   ArchiveIcon,
   BlocksIcon,
   BotIcon,
+  Building2Icon,
   GitBranchIcon,
   KeyboardIcon,
   Link2Icon,
@@ -47,6 +48,7 @@ const SETTINGS_SECTION_ICONS: Readonly<
   Record<SettingsPath, ComponentType<{ className?: string }>>
 > = {
   "/settings/general": Settings2Icon,
+  "/settings/relewise": Building2Icon,
   "/settings/appearance": PaletteIcon,
   "/settings/keybindings": KeyboardIcon,
   "/settings/providers": BotIcon,

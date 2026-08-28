@@ -1,5 +1,6 @@
 import { autoAnimate } from "@formkit/auto-animate";
 import { useAtomValue } from "@effect/atom-react";
+import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import {
   DndContext,
@@ -30,7 +31,7 @@ import {
   scopeThreadRef,
   scopedThreadKey,
 } from "@t3tools/client-runtime/environment";
-import type { ScopedThreadRef, ThreadId } from "@t3tools/contracts";
+import type { RelewiseBacklogCard, ScopedThreadRef, ThreadId } from "@t3tools/contracts";
 import type { TimestampFormat } from "@t3tools/contracts/settings";
 import {
   AlarmClockIcon,
@@ -121,6 +122,8 @@ import {
 import { formatRelativeTimeLabel, parseTimestampDate } from "../timestampFormat";
 import type { SidebarThreadSummary } from "../types";
 import { cn } from "~/lib/utils";
+import { PrimaryEnvironmentHttpClient } from "../environments/primary/httpClient";
+import { runPrimaryHttp } from "../lib/runtime";
 import { buildThreadActionMenuItems } from "./threadActionMenu.logic";
 import {
   animatePinnedLayoutChanges,
@@ -181,6 +184,8 @@ import { Input } from "./ui/input";
 import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
 import { SidebarContent, SidebarGroup, SidebarMenuButton, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
+import { RelewiseCardDetailsDialog } from "./sidebar/RelewiseCardDetailsDialog";
+import { indexTrelloCards, trelloCardShortLink } from "./sidebar/trelloThreadCards";
 import { Popover, PopoverPopup, PopoverTrigger } from "./ui/popover";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import {
@@ -198,6 +203,22 @@ const SETTLED_TAIL_PAGE_COUNT = 25;
 // Keep the v2 key so existing preferences survive the v2-to-default rename.
 const SETTLED_SHELF_EXPANDED_KEY = "t3code:sidebar-v2:settled-expanded";
 const SNOOZED_SHELF_EXPANDED_KEY = "t3code:sidebar-v2:snoozed-expanded";
+
+function TrelloCardIcon({ className }: { readonly className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className={className}
+    >
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <path d="M7 7h3v8H7zM14 7h3v5h-3z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
 
 function compactSidebarTimeLabel(label: string): string {
   if (label === "just now") return "now";
@@ -749,7 +770,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     threadKey: string,
     snapshot: ThreadChangeRequestSnapshot | null,
   ) => void;
+  trelloCard: RelewiseBacklogCard | null;
 }) {
+  const [trelloDetailsOpen, setTrelloDetailsOpen] = useState(false);
   const {
     isRenaming,
     changeRequestSnapshot,
@@ -1570,15 +1593,31 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 </span>
               ) : null}
               <span
-                aria-hidden
-                className="pointer-events-none ml-auto inline-flex shrink-0 items-center gap-1"
+                aria-hidden={props.trelloCard ? undefined : true}
+                className={cn(
+                  "ml-auto inline-flex shrink-0 items-center gap-1",
+                  !props.trelloCard && "pointer-events-none",
+                )}
               >
                 {isRemote ? (
                   <span className="inline-flex shrink-0 items-center text-sidebar-muted-foreground/70">
                     <ServerIcon aria-hidden className="size-3.5" />
                   </span>
                 ) : null}
-                {driverKind ? (
+                {props.trelloCard ? (
+                  <button
+                    type="button"
+                    aria-label="Show Trello card details"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setTrelloDetailsOpen(true);
+                    }}
+                    className="inline-flex cursor-pointer items-center rounded-sm text-[#0c66e4] outline-none transition-colors hover:text-[#0055cc] focus-visible:ring-2 focus-visible:ring-ring dark:text-[#579dff] dark:hover:text-[#85b8ff]"
+                  >
+                    <TrelloCardIcon className="size-3.5" />
+                  </button>
+                ) : driverKind ? (
                   <span className="inline-flex shrink-0 items-center">
                     <ProviderInstanceIcon
                       driverKind={driverKind}
@@ -1602,6 +1641,10 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
         </TooltipTrigger>
         {detailsTooltip}
       </Tooltip>
+      <RelewiseCardDetailsDialog
+        card={trelloDetailsOpen ? props.trelloCard : null}
+        onOpenChange={setTrelloDetailsOpen}
+      />
     </li>
   );
 });
@@ -1725,6 +1768,36 @@ export default function Sidebar() {
   const projects = useProjects();
   const projectOrder = useUiStateStore((store) => store.projectOrder);
   const threads = useThreadShells();
+  const hasTrelloThreads = useMemo(
+    () => threads.some((thread) => thread.trelloCardUrl != null),
+    [threads],
+  );
+  const [trelloCardsByShortLink, setTrelloCardsByShortLink] = useState<
+    ReadonlyMap<string, RelewiseBacklogCard>
+  >(new Map());
+  useEffect(() => {
+    if (!hasTrelloThreads) {
+      setTrelloCardsByShortLink(new Map());
+      return;
+    }
+
+    let active = true;
+    void runPrimaryHttp(
+      PrimaryEnvironmentHttpClient.pipe(
+        Effect.flatMap((client) => client.relewise.trelloCards({ headers: {} })),
+      ),
+    ).then(
+      (result) => {
+        if (active) setTrelloCardsByShortLink(indexTrelloCards(result.cards));
+      },
+      () => {
+        if (active) setTrelloCardsByShortLink(new Map());
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [hasTrelloThreads]);
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
@@ -3682,6 +3755,13 @@ export default function Sidebar() {
                         // painted over text).
                         key={`${threadKey}:${rowVariant}`}
                         thread={thread}
+                        trelloCard={
+                          thread.trelloCardUrl
+                            ? (trelloCardsByShortLink.get(
+                                trelloCardShortLink(thread.trelloCardUrl) ?? "",
+                              ) ?? null)
+                            : null
+                        }
                         variant={rowVariant}
                         // Snoozed rows wake; settled rows un-settle (explicit
                         // settles clear the override, auto-settled rows get
