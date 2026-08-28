@@ -18,6 +18,7 @@ import {
   isTrailingDoubleClick,
   orderItemsByPreferredIds,
   resolveProjectStatusIndicator,
+  resolveRenderedSettledThreads,
   resolveSidebarStageBadgeLabel,
   resolveThreadRowClassName,
   resolveSidebarThreadStatus,
@@ -54,6 +55,20 @@ import {
 } from "../types";
 
 const localEnvironmentId = EnvironmentId.make("environment-local");
+
+describe("resolveRenderedSettledThreads", () => {
+  const threads = [{ id: "settled-1" }, { id: "settled-2" }];
+
+  it("renders settled history when its shelf is expanded", () => {
+    expect(resolveRenderedSettledThreads({ expanded: true, visibleThreads: threads })).toBe(
+      threads,
+    );
+  });
+
+  it("renders no settled rows when its shelf is collapsed", () => {
+    expect(resolveRenderedSettledThreads({ expanded: false, visibleThreads: threads })).toEqual([]);
+  });
+});
 
 describe("animatePinnedLayoutChanges", () => {
   const baseArgs: Parameters<AnimateLayoutChanges>[0] = {
