@@ -546,6 +546,51 @@ export class EnvironmentPullRequestsHttpApi extends HttpApiGroup.make("pullReque
   }).middleware(EnvironmentAuthenticatedAuth),
 ) {}
 
+export const RelewiseBacklogLabel = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  textColor: Schema.NullOr(Schema.String),
+  backgroundColor: Schema.NullOr(Schema.String),
+});
+export type RelewiseBacklogLabel = typeof RelewiseBacklogLabel.Type;
+
+export const RelewiseBacklogCard = Schema.Struct({
+  id: Schema.String,
+  title: Schema.String,
+  labels: Schema.Array(RelewiseBacklogLabel),
+  url: Schema.String,
+});
+export type RelewiseBacklogCard = typeof RelewiseBacklogCard.Type;
+
+export const RelewiseBacklogResult = Schema.Struct({
+  cards: Schema.Array(RelewiseBacklogCard),
+});
+export type RelewiseBacklogResult = typeof RelewiseBacklogResult.Type;
+
+export class EnvironmentRelewiseHttpApi extends HttpApiGroup.make("relewise")
+  .add(
+    HttpApiEndpoint.get("backlog", "/api/relewise/backlog", {
+      headers: OptionalBearerHeaders,
+      success: RelewiseBacklogResult,
+      error: [
+        EnvironmentAuthInvalidError,
+        EnvironmentScopeRequiredError,
+        EnvironmentHttpInternalServerError,
+      ],
+    }).middleware(EnvironmentAuthenticatedAuth),
+  )
+  .add(
+    HttpApiEndpoint.post("refreshBacklog", "/api/relewise/backlog/refresh", {
+      headers: OptionalBearerHeaders,
+      success: RelewiseBacklogResult,
+      error: [
+        EnvironmentAuthInvalidError,
+        EnvironmentScopeRequiredError,
+        EnvironmentHttpInternalServerError,
+      ],
+    }).middleware(EnvironmentAuthenticatedAuth),
+  ) {}
+
 export class EnvironmentConnectHttpApi extends HttpApiGroup.make("connect")
   .add(
     HttpApiEndpoint.post("linkProof", "/api/connect/link-proof", {
@@ -612,4 +657,5 @@ export class EnvironmentHttpApi extends HttpApi.make("environment")
   .add(EnvironmentAuthHttpApi)
   .add(EnvironmentOrchestrationHttpApi)
   .add(EnvironmentPullRequestsHttpApi)
+  .add(EnvironmentRelewiseHttpApi)
   .add(EnvironmentConnectHttpApi) {}
