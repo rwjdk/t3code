@@ -10,7 +10,7 @@ import {
 import { ChevronDownIcon, DownloadIcon, PlusIcon, SettingsIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
-import { commandForProjectScript, primaryProjectScript } from "~/projectScripts";
+import { commandForProjectScript } from "~/projectScripts";
 import { shortcutLabelForCommand } from "~/keybindings";
 import {
   EMPTY_PROJECT_SCRIPT_INPUT,
@@ -70,13 +70,6 @@ export default function ProjectScriptsControl({
   });
   const [editorRequest, setEditorRequest] = useState<ProjectScriptEditorRequest | null>(null);
 
-  const primaryScript = useMemo(() => {
-    if (preferredScriptId) {
-      const preferred = scripts.find((script) => script.id === preferredScriptId);
-      if (preferred) return preferred;
-    }
-    return primaryProjectScript(scripts);
-  }, [preferredScriptId, scripts]);
   const importableScripts = useMemo(
     () =>
       fileScripts.filter(
@@ -113,6 +106,7 @@ export default function ProjectScriptsControl({
       command: fileScript.command,
       icon: fileScript.icon ?? "play",
       runOnWorktreeCreate: fileScript.runOnWorktreeCreate ?? false,
+      background: fileScript.background ?? false,
       keybinding: null,
       previewUrl: fileScript.previewUrl ?? null,
       autoOpenPreview: fileScript.previewUrl ? (fileScript.autoOpenPreview ?? false) : false,
@@ -132,7 +126,7 @@ export default function ProjectScriptsControl({
 
   const importMenuItems = importableScripts.length > 0 && (
     <>
-      {primaryScript && <MenuSeparator />}
+      {scripts.length > 0 && <MenuSeparator />}
       <MenuGroup>
         <MenuGroupLabel>From t3.json</MenuGroupLabel>
         {importableScripts.map((fileScript) => (
@@ -154,30 +148,30 @@ export default function ProjectScriptsControl({
 
   return (
     <>
-      {primaryScript ? (
+      {scripts.length > 0 ? (
         <Group aria-label="Project scripts">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  size="xs"
-                  variant="outline"
-                  className="w-7 px-0 sm:w-6 @3xl/header-actions:w-auto! @3xl/header-actions:px-[calc(--spacing(2)-1px)]"
-                  aria-label={`Run ${primaryScript.name}`}
-                  // The tooltip wrapper replaces data-slot="button", so themed
-                  // toolbar styling needs its own hook.
-                  data-toolbar-control=""
-                  onClick={() => onRunScript(primaryScript)}
-                />
-              }
-            >
-              <ScriptIcon icon={primaryScript.icon} />
-              <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
-                {primaryScript.name}
-              </span>
-            </TooltipTrigger>
-            <TooltipPopup side="top">Run {primaryScript.name}</TooltipPopup>
-          </Tooltip>
+          {scripts.map((script) => (
+            <Tooltip key={script.id}>
+              <TooltipTrigger
+                render={
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    className="w-7 px-0 sm:w-6 @3xl/header-actions:w-auto! @3xl/header-actions:px-[calc(--spacing(2)-1px)]"
+                    aria-label={`Run ${script.name}`}
+                    data-toolbar-control=""
+                    onClick={() => onRunScript(script)}
+                  />
+                }
+              >
+                <ScriptIcon icon={script.icon} />
+                <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+                  {script.name}
+                </span>
+              </TooltipTrigger>
+              <TooltipPopup side="top">Run {script.name}</TooltipPopup>
+            </Tooltip>
+          ))}
           <GroupSeparator className="hidden @3xl/header-actions:block" />
           <Menu
             highlightItemOnHover={false}

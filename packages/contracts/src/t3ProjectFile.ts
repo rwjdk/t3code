@@ -42,6 +42,12 @@ export const T3ProjectFileScript = Schema.Struct({
         "When true, the script runs automatically after a worktree is created for a new thread.",
     }),
   ),
+  background: Schema.optionalKey(
+    Schema.Boolean.annotate({
+      description:
+        "When true, the command runs in a terminal that is opened but not shown to the user.",
+    }),
+  ),
   previewUrl: Schema.optionalKey(
     trimmedNonEmpty({
       description:

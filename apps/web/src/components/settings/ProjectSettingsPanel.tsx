@@ -666,6 +666,7 @@ function ProjectDetail({ group }: { group: SidebarProjectSnapshot }) {
         command: fileScript.command,
         icon: fileScript.icon ?? "play",
         runOnWorktreeCreate: fileScript.runOnWorktreeCreate ?? false,
+        background: fileScript.background ?? false,
         keybinding: null,
         previewUrl: fileScript.previewUrl ?? null,
         autoOpenPreview: fileScript.previewUrl ? (fileScript.autoOpenPreview ?? false) : false,
@@ -1156,6 +1157,11 @@ function ProjectDetail({ group }: { group: SidebarProjectSnapshot }) {
                       {script.runOnWorktreeCreate ? (
                         <span className="shrink-0 rounded-sm border border-border/60 px-1.5 py-px text-[11px] font-normal text-muted-foreground">
                           setup
+                        </span>
+                      ) : null}
+                      {script.background ? (
+                        <span className="shrink-0 rounded-sm border border-border/60 px-1.5 py-px text-[11px] font-normal text-muted-foreground">
+                          background
                         </span>
                       ) : null}
                       {script.previewUrl ? (

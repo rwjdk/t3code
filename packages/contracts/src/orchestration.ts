@@ -253,6 +253,50 @@ export const ProjectScriptIcon = Schema.Literals([
   "configure",
   "build",
   "debug",
+  "deploy",
+  "format",
+  "clean",
+  "install",
+  "update",
+  "serve",
+  "watch",
+  "check",
+  "sync",
+  "scan",
+  "analyze",
+  "benchmark",
+  "migrate",
+  "seed",
+  "generate",
+  "publish",
+  "release",
+  "start",
+  "stop",
+  "restart",
+  "push",
+  "pull",
+  "commit",
+  "branch",
+  "merge",
+  "docs",
+  "typecheck",
+  "audit",
+  "validate",
+  "compile",
+  "run",
+  "ship",
+  "coverage",
+  "bundle",
+  "minify",
+  "docker",
+  "database",
+  "cloud",
+  "zap",
+  "monitor",
+  "log",
+  "key",
+  "lock",
+  "server",
 ]);
 export type ProjectScriptIcon = typeof ProjectScriptIcon.Type;
 
@@ -262,6 +306,12 @@ export const ProjectScript = Schema.Struct({
   command: TrimmedNonEmptyString,
   icon: ProjectScriptIcon,
   runOnWorktreeCreate: Schema.Boolean,
+  /**
+   * When true, the command runs in a terminal that is opened but not shown
+   * to the user. The terminal is still created and tracked; the user can
+   * open it later to inspect output.
+   */
+  background: Schema.optional(Schema.Boolean),
   /**
    * URL to open in the in-app browser preview when this script runs (or
    * when the user explicitly requests a preview). Optional; only honored on

@@ -159,10 +159,57 @@ export function projectScriptMenuLabel(script: ProjectScript): string {
 }
 
 export function projectScriptMenuIcon(icon: ProjectScript["icon"]) {
-  if (icon === "test") return "flask";
-  if (icon === "lint") return "checklist";
-  if (icon === "configure") return "wrench.and.screwdriver";
-  if (icon === "build") return "hammer";
-  if (icon === "debug") return "ladybug";
-  return "play";
+  const map: Record<ProjectScript["icon"], string> = {
+    play: "play",
+    test: "flask",
+    lint: "checklist",
+    configure: "wrench.and.screwdriver",
+    build: "hammer",
+    debug: "ladybug",
+    deploy: "rocket",
+    format: "text.alignleft",
+    clean: "eraser",
+    install: "shippingbox",
+    update: "arrow.clockwise",
+    serve: "globe",
+    watch: "eye",
+    check: "checkmark",
+    sync: "arrow.triangle.2.circlepath",
+    scan: "viewfinder",
+    analyze: "waveform.path",
+    benchmark: "gauge",
+    migrate: "arrow.left.arrow.right",
+    seed: "sprout",
+    generate: "sparkles",
+    publish: "icloud.and.arrow.up",
+    release: "tag",
+    start: "power",
+    stop: "stop",
+    restart: "arrow.counterclockwise",
+    push: "arrow.up",
+    pull: "arrow.down",
+    commit: "arrow.triangle.branch",
+    branch: "arrow.triangle.branch",
+    merge: "arrow.triangle.merge",
+    docs: "book",
+    typecheck: "doc.text.magnifyingglass",
+    audit: "shield.checkered",
+    validate: "checkmark.seal",
+    compile: "curlybraces",
+    run: "terminal",
+    ship: "shippingbox",
+    coverage: "percent",
+    bundle: "square.stack.3d",
+    minify: "arrow.down.right.and.arrow.up.left",
+    docker: "shippingbox",
+    database: "cylinder.split.3d.1",
+    cloud: "cloud",
+    zap: "bolt",
+    monitor: "display",
+    log: "text.append",
+    key: "key",
+    lock: "lock",
+    server: "server.rack",
+  };
+  return map[icon] ?? "play";
 }

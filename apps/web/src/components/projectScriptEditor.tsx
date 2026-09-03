@@ -9,12 +9,56 @@ import {
   type AtomCommandResult,
 } from "@t3tools/client-runtime/state/runtime";
 import {
+  ActivityIcon,
+  ArrowDownIcon,
+  ArrowRightLeftIcon,
+  ArrowUpIcon,
+  BadgeCheckIcon,
+  BookIcon,
+  BracesIcon,
   BugIcon,
+  CheckIcon,
+  CloudIcon,
+  ContainerIcon,
+  DatabaseIcon,
+  EraserIcon,
+  EyeIcon,
+  FileCheckIcon,
   FlaskConicalIcon,
+  GaugeIcon,
+  GitBranchIcon,
+  GitCommitIcon,
+  GitMergeIcon,
+  GlobeIcon,
   HammerIcon,
+  IndentIcon,
+  KeyIcon,
+  LayersIcon,
   ListChecksIcon,
+  LockIcon,
+  Minimize2Icon,
+  MonitorIcon,
+  PackageIcon,
+  PercentIcon,
   PlayIcon,
+  PowerIcon,
+  RefreshCwIcon,
+  RocketIcon,
+  RotateCcwIcon,
+  RotateCwIcon,
+  ScanSearchIcon,
+  ScrollTextIcon,
+  ServerIcon,
+  ShieldCheckIcon,
+  ShipIcon,
+  SparklesIcon,
+  SproutIcon,
+  SquareIcon,
+  TagIcon,
+  TerminalIcon,
+  UploadCloudIcon,
   WrenchIcon,
+  ZapIcon,
 } from "lucide-react";
 import React, { type FormEvent, type KeyboardEvent, useEffect, useState } from "react";
 
@@ -56,7 +100,104 @@ export const SCRIPT_ICONS: Array<{ id: ProjectScriptIcon; label: string }> = [
   { id: "configure", label: "Configure" },
   { id: "build", label: "Build" },
   { id: "debug", label: "Debug" },
+  { id: "deploy", label: "Deploy" },
+  { id: "format", label: "Format" },
+  { id: "clean", label: "Clean" },
+  { id: "install", label: "Install" },
+  { id: "update", label: "Update" },
+  { id: "serve", label: "Serve" },
+  { id: "watch", label: "Watch" },
+  { id: "check", label: "Check" },
+  { id: "sync", label: "Sync" },
+  { id: "scan", label: "Scan" },
+  { id: "analyze", label: "Analyze" },
+  { id: "benchmark", label: "Benchmark" },
+  { id: "migrate", label: "Migrate" },
+  { id: "seed", label: "Seed" },
+  { id: "generate", label: "Generate" },
+  { id: "publish", label: "Publish" },
+  { id: "release", label: "Release" },
+  { id: "start", label: "Start" },
+  { id: "stop", label: "Stop" },
+  { id: "restart", label: "Restart" },
+  { id: "push", label: "Push" },
+  { id: "pull", label: "Pull" },
+  { id: "commit", label: "Commit" },
+  { id: "branch", label: "Branch" },
+  { id: "merge", label: "Merge" },
+  { id: "docs", label: "Docs" },
+  { id: "typecheck", label: "Type Check" },
+  { id: "audit", label: "Audit" },
+  { id: "validate", label: "Validate" },
+  { id: "compile", label: "Compile" },
+  { id: "run", label: "Run" },
+  { id: "ship", label: "Ship" },
+  { id: "coverage", label: "Coverage" },
+  { id: "bundle", label: "Bundle" },
+  { id: "minify", label: "Minify" },
+  { id: "docker", label: "Docker" },
+  { id: "database", label: "Database" },
+  { id: "cloud", label: "Cloud" },
+  { id: "zap", label: "Zap" },
+  { id: "monitor", label: "Monitor" },
+  { id: "log", label: "Log" },
+  { id: "key", label: "Key" },
+  { id: "lock", label: "Lock" },
+  { id: "server", label: "Server" },
 ];
+
+const ICON_COMPONENTS: Record<ProjectScriptIcon, React.ComponentType<{ className?: string }>> = {
+  play: PlayIcon,
+  test: FlaskConicalIcon,
+  lint: ListChecksIcon,
+  configure: WrenchIcon,
+  build: HammerIcon,
+  debug: BugIcon,
+  deploy: RocketIcon,
+  format: IndentIcon,
+  clean: EraserIcon,
+  install: PackageIcon,
+  update: RefreshCwIcon,
+  serve: GlobeIcon,
+  watch: EyeIcon,
+  check: CheckIcon,
+  sync: RotateCwIcon,
+  scan: ScanSearchIcon,
+  analyze: ActivityIcon,
+  benchmark: GaugeIcon,
+  migrate: ArrowRightLeftIcon,
+  seed: SproutIcon,
+  generate: SparklesIcon,
+  publish: UploadCloudIcon,
+  release: TagIcon,
+  start: PowerIcon,
+  stop: SquareIcon,
+  restart: RotateCcwIcon,
+  push: ArrowUpIcon,
+  pull: ArrowDownIcon,
+  commit: GitCommitIcon,
+  branch: GitBranchIcon,
+  merge: GitMergeIcon,
+  docs: BookIcon,
+  typecheck: FileCheckIcon,
+  audit: ShieldCheckIcon,
+  validate: BadgeCheckIcon,
+  compile: BracesIcon,
+  run: TerminalIcon,
+  ship: ShipIcon,
+  coverage: PercentIcon,
+  bundle: LayersIcon,
+  minify: Minimize2Icon,
+  docker: ContainerIcon,
+  database: DatabaseIcon,
+  cloud: CloudIcon,
+  zap: ZapIcon,
+  monitor: MonitorIcon,
+  log: ScrollTextIcon,
+  key: KeyIcon,
+  lock: LockIcon,
+  server: ServerIcon,
+};
 
 export function ScriptIcon({
   icon,
@@ -65,12 +206,8 @@ export function ScriptIcon({
   icon: ProjectScriptIcon;
   className?: string;
 }) {
-  if (icon === "test") return <FlaskConicalIcon className={className} />;
-  if (icon === "lint") return <ListChecksIcon className={className} />;
-  if (icon === "configure") return <WrenchIcon className={className} />;
-  if (icon === "build") return <HammerIcon className={className} />;
-  if (icon === "debug") return <BugIcon className={className} />;
-  return <PlayIcon className={className} />;
+  const Component = ICON_COMPONENTS[icon] ?? PlayIcon;
+  return <Component className={className} />;
 }
 
 export interface NewProjectScriptInput {
@@ -78,6 +215,7 @@ export interface NewProjectScriptInput {
   command: string;
   icon: ProjectScriptIcon;
   runOnWorktreeCreate: boolean;
+  background: boolean;
   keybinding: string | null;
   /** Optional URL to open in the in-app preview when this script runs. */
   previewUrl: string | null;
@@ -92,6 +230,7 @@ export const EMPTY_PROJECT_SCRIPT_INPUT: NewProjectScriptInput = {
   command: "",
   icon: "play",
   runOnWorktreeCreate: false,
+  background: false,
   keybinding: null,
   previewUrl: null,
   autoOpenPreview: false,
@@ -116,6 +255,7 @@ export function editorRequestForScript(
       command: script.command,
       icon: script.icon,
       runOnWorktreeCreate: script.runOnWorktreeCreate,
+      background: script.background ?? false,
       keybinding: keybindingValueForCommand(keybindings, commandForProjectScript(script.id)),
       previewUrl: script.previewUrl ?? null,
       autoOpenPreview: script.autoOpenPreview ?? false,
@@ -151,6 +291,7 @@ export function ProjectScriptEditorDialog({
   const [icon, setIcon] = useState<ProjectScriptIcon>("play");
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [runOnWorktreeCreate, setRunOnWorktreeCreate] = useState(false);
+  const [background, setBackground] = useState(false);
   const [keybinding, setKeybinding] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
   const [autoOpenPreview, setAutoOpenPreview] = useState(false);
@@ -168,6 +309,7 @@ export function ProjectScriptEditorDialog({
     setIcon(request.initial.icon);
     setIconPickerOpen(false);
     setRunOnWorktreeCreate(request.initial.runOnWorktreeCreate);
+    setBackground(request.initial.background);
     setKeybinding(request.initial.keybinding ?? "");
     setPreviewUrl(request.initial.previewUrl ?? "");
     setAutoOpenPreview(request.initial.autoOpenPreview);
@@ -219,6 +361,7 @@ export function ProjectScriptEditorDialog({
         command: trimmedCommand,
         icon,
         runOnWorktreeCreate,
+        background,
         keybinding: keybindingRule?.key ?? null,
         previewUrl: trimmedPreviewUrl.length > 0 ? trimmedPreviewUrl : null,
         autoOpenPreview: trimmedPreviewUrl.length > 0 ? autoOpenPreview : false,
@@ -277,7 +420,7 @@ export function ProjectScriptEditorDialog({
                       <ScriptIcon icon={icon} className="size-4.5" />
                     </PopoverTrigger>
                     <PopoverPopup align="start">
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid max-h-64 grid-cols-5 gap-2 overflow-y-auto p-1">
                         {SCRIPT_ICONS.map((entry) => {
                           const isSelected = entry.id === icon;
                           return (
@@ -350,6 +493,13 @@ export function ProjectScriptEditorDialog({
                 <Switch
                   checked={runOnWorktreeCreate}
                   onCheckedChange={(checked) => setRunOnWorktreeCreate(Boolean(checked))}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border/70 px-3 py-2 text-sm dark:border-transparent dark:bg-white/[0.035]">
+                <span>Run in background (no visible terminal)</span>
+                <Switch
+                  checked={background}
+                  onCheckedChange={(checked) => setBackground(Boolean(checked))}
                 />
               </label>
               <label
