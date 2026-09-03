@@ -28,6 +28,10 @@ export function makeStartCardUpdate(userEmail: string) {
   } as const;
 }
 
+export function archiveCardUrl(cardId: string): string {
+  return `${HUB_API_URL}/trello/cards/${encodeURIComponent(cardId)}/archive`;
+}
+
 const HubIdName = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
@@ -160,6 +164,9 @@ export class RelewiseBacklog extends Context.Service<
       cardId: string,
       userEmail: string,
     ) => Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
+    readonly archiveCard: (
+      cardId: string,
+    ) => Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
   }
 >()("t3/relewise/RelewiseBacklog") {
   static readonly layer = Layer.effect(
@@ -230,7 +237,14 @@ export class RelewiseBacklog extends Context.Service<
         );
         return (yield* cache.refresh).filter((card) => card.listName === BACKLOG_LIST_NAME);
       });
-      return RelewiseBacklog.of({ cards, allCards: cache.cards, refresh, startCard });
+      const archiveCard = Effect.fn("RelewiseBacklog.archiveCard")(function* (cardId: string) {
+        yield* client.execute(HttpClientRequest.put(archiveCardUrl(cardId))).pipe(
+          Effect.asVoid,
+          Effect.mapError((cause) => new RelewiseBacklogError({ cause })),
+        );
+        return yield* cache.refresh;
+      });
+      return RelewiseBacklog.of({ cards, allCards: cache.cards, refresh, startCard, archiveCard });
     }),
   );
 }

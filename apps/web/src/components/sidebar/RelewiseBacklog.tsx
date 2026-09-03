@@ -333,6 +333,12 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
       <RelewiseCardDetailsDialog
         card={detailsCard}
         onOpenChange={(open) => !open && setDetailsCard(null)}
+        onArchived={(cards) =>
+          setState({
+            status: "ready",
+            cards: cards.filter((card) => card.listName === "Backlog"),
+          })
+        }
         footer={
           <Button
             onClick={() => {

@@ -1,6 +1,13 @@
 import type { RelewiseBacklogCard } from "@t3tools/contracts";
-import { CheckIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import * as Effect from "effect/Effect";
+import { ArchiveIcon, CheckIcon } from "lucide-react";
+import { type ReactNode, useState } from "react";
+
+import { PrimaryEnvironmentHttpClient } from "../../environments/primary/httpClient";
+import { requestConfirmDialog } from "../../confirmDialog";
+import { runPrimaryHttp } from "../../lib/runtime";
+import { Button } from "../ui/button";
+import { toastManager } from "../ui/toast";
 
 import {
   Dialog,
@@ -15,9 +22,45 @@ import {
 export function RelewiseCardDetailsDialog(props: {
   card: RelewiseBacklogCard | null;
   onOpenChange: (open: boolean) => void;
+  onArchived: (cards: ReadonlyArray<RelewiseBacklogCard>) => void;
   footer?: ReactNode;
 }) {
-  const { card, footer, onOpenChange } = props;
+  const { card, footer, onArchived, onOpenChange } = props;
+  const [archiving, setArchiving] = useState(false);
+
+  const archiveCard = async () => {
+    if (card === null || archiving) return;
+    const confirmed =
+      (await requestConfirmDialog(`Archive the Trello card “${card.title}”?`, {
+        variant: "destructive",
+      })) ?? false;
+    if (!confirmed) return;
+
+    setArchiving(true);
+    try {
+      const result = await runPrimaryHttp(
+        PrimaryEnvironmentHttpClient.pipe(
+          Effect.flatMap((client) =>
+            client.relewise.archiveCard({
+              headers: {},
+              payload: { cardId: card.id },
+            }),
+          ),
+        ),
+      );
+      onArchived(result.cards);
+      onOpenChange(false);
+      toastManager.add({ type: "success", title: "Trello card archived" });
+    } catch (error) {
+      toastManager.add({
+        type: "error",
+        title: "Could not archive Trello card",
+        description: error instanceof Error ? error.message : "The card could not be archived.",
+      });
+    } finally {
+      setArchiving(false);
+    }
+  };
 
   return (
     <Dialog open={card !== null} onOpenChange={onOpenChange}>
@@ -111,7 +154,13 @@ export function RelewiseCardDetailsDialog(props: {
             </dl>
           </DialogPanel>
         ) : null}
-        {footer === undefined ? null : <DialogFooter>{footer}</DialogFooter>}
+        <DialogFooter>
+          <Button variant="destructive" onClick={() => void archiveCard()} disabled={archiving}>
+            <ArchiveIcon />
+            {archiving ? "Archiving…" : "Archive card"}
+          </Button>
+          {footer}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

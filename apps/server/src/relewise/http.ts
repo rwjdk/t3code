@@ -57,6 +57,14 @@ export const relewiseHttpApiLayer = HttpApiBuilder.group(
           yield* requireEnvironmentScope(AuthOrchestrationOperateScope);
           return yield* handleLoad(backlog.startCard(args.payload.cardId, args.payload.userEmail));
         }),
+      )
+      .handle(
+        "archiveCard",
+        Effect.fn("environment.relewise.archiveCard")(function* (args) {
+          yield* annotateEnvironmentRequest(args.endpoint.name);
+          yield* requireEnvironmentScope(AuthOrchestrationOperateScope);
+          return yield* handleLoad(backlog.archiveCard(args.payload.cardId));
+        }),
       );
   }),
 );

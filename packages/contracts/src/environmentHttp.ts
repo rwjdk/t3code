@@ -605,6 +605,11 @@ export const RelewiseStartCardInput = Schema.Struct({
 });
 export type RelewiseStartCardInput = typeof RelewiseStartCardInput.Type;
 
+export const RelewiseArchiveCardInput = Schema.Struct({
+  cardId: Schema.String,
+});
+export type RelewiseArchiveCardInput = typeof RelewiseArchiveCardInput.Type;
+
 export class EnvironmentRelewiseHttpApi extends HttpApiGroup.make("relewise")
   .add(
     HttpApiEndpoint.get("trelloCards", "/api/relewise/trello/cards", {
@@ -643,6 +648,18 @@ export class EnvironmentRelewiseHttpApi extends HttpApiGroup.make("relewise")
     HttpApiEndpoint.post("startCard", "/api/relewise/backlog/start", {
       headers: OptionalBearerHeaders,
       payload: RelewiseStartCardInput,
+      success: RelewiseBacklogResult,
+      error: [
+        EnvironmentAuthInvalidError,
+        EnvironmentScopeRequiredError,
+        EnvironmentHttpInternalServerError,
+      ],
+    }).middleware(EnvironmentAuthenticatedAuth),
+  )
+  .add(
+    HttpApiEndpoint.post("archiveCard", "/api/relewise/trello/archive", {
+      headers: OptionalBearerHeaders,
+      payload: RelewiseArchiveCardInput,
       success: RelewiseBacklogResult,
       error: [
         EnvironmentAuthInvalidError,

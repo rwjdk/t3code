@@ -783,6 +783,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     snapshot: ThreadChangeRequestSnapshot | null,
   ) => void;
   trelloCard: RelewiseBacklogCard | null;
+  onTrelloCardsUpdated: (cards: ReadonlyArray<RelewiseBacklogCard>) => void;
 }) {
   const [trelloDetailsOpen, setTrelloDetailsOpen] = useState(false);
   const {
@@ -1660,6 +1661,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       <RelewiseCardDetailsDialog
         card={trelloDetailsOpen ? props.trelloCard : null}
         onOpenChange={setTrelloDetailsOpen}
+        onArchived={props.onTrelloCardsUpdated}
       />
     </li>
   );
@@ -1799,6 +1801,11 @@ export default function Sidebar() {
   const [trelloCardsByShortLink, setTrelloCardsByShortLink] = useState<
     ReadonlyMap<string, RelewiseBacklogCard>
   >(new Map());
+  const handleTrelloCardsUpdated = useCallback(
+    (cards: ReadonlyArray<RelewiseBacklogCard>) =>
+      setTrelloCardsByShortLink(indexTrelloCards(cards)),
+    [],
+  );
   useEffect(() => {
     if (!hasTrelloThreads) {
       setTrelloCardsByShortLink(new Map());
@@ -3853,6 +3860,7 @@ export default function Sidebar() {
                               ) ?? null)
                             : null
                         }
+                        onTrelloCardsUpdated={handleTrelloCardsUpdated}
                         variant={rowVariant}
                         // Snoozed rows wake, settled rows un-settle, and cards settle.
                         variantAction={

@@ -3,7 +3,20 @@ import * as Effect from "effect/Effect";
 import * as Ref from "effect/Ref";
 import * as TestClock from "effect/testing/TestClock";
 
-import { makeBacklogCache, makeStartCardUpdate, selectBacklogCards } from "./RelewiseBacklog.ts";
+import {
+  archiveCardUrl,
+  makeBacklogCache,
+  makeStartCardUpdate,
+  selectBacklogCards,
+} from "./RelewiseBacklog.ts";
+
+describe("archiveCardUrl", () => {
+  it("targets the Hub archive operation and encodes the card id", () => {
+    expect(archiveCardUrl("card/id")).toBe(
+      "https://hub.relewise.com/api/v1/trello/cards/card%2Fid/archive",
+    );
+  });
+});
 
 describe("makeStartCardUpdate", () => {
   it("moves the card to In Progress as the configured Relewise user", () => {
