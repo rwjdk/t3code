@@ -16,6 +16,7 @@ import {
 } from "@t3tools/contracts";
 
 import * as ServerConfig from "../config.ts";
+import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
 
@@ -35,6 +36,7 @@ export const make = Effect.gen(function* () {
   const config = yield* ServerConfig.ServerConfig;
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
+  const projections = yield* ProjectionSnapshotQuery.ProjectionSnapshotQuery;
   const vcsRegistry = yield* VcsDriverRegistry.VcsDriverRegistry;
   const git = yield* GitVcsDriver.GitVcsDriver;
 
@@ -66,8 +68,16 @@ export const make = Effect.gen(function* () {
     operation: "ReviewService.getDiffPreview" | "ReviewService.getDiffFileContents",
     cwd: string,
   ) {
+    const resolvedCwd = path.resolve(cwd);
+    const registeredProject = yield* projections
+      .getActiveProjectByWorkspaceRoot(resolvedCwd)
+      .pipe(Effect.orDie);
+    if (registeredProject._tag === "Some") {
+      return;
+    }
+
     const [candidate, workspaceRoot, worktreesRoot] = yield* Effect.all([
-      canonicalizePath(cwd),
+      canonicalizePath(resolvedCwd),
       canonicalizePath(config.cwd),
       canonicalizePath(config.worktreesDir),
     ]);

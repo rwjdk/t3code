@@ -105,6 +105,11 @@ const DIFF_VIEW_UNSAFE_CSS = `${DIFF_SURFACE_THEME_UNSAFE_CSS}
 
 :is([data-separator="line-info"], [data-separator="line-info-basic"])
   [data-separator-wrapper] {
+  /* Pierre renders edge context expanders from the gutter tree. The regular
+     separator gets a full-view width upstream, while line-info-basic does
+     not; normalize both so the final "More unchanged context" row cannot be
+     squeezed down to the line-number column. */
+  width: 100cqi !important;
   padding-inline: 8px 12px !important;
   background-color: transparent !important;
 }

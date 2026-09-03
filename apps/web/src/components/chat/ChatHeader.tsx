@@ -10,7 +10,7 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, FileDiffIcon, MessageSquareIcon } from "lucide-react";
 import {
   memo,
   useCallback,
@@ -39,13 +39,13 @@ import { useThreadActionMenu } from "~/hooks/useThreadActionMenu";
 import { threadEnvironment } from "../../state/threads";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { observeResponsiveBreakpointFade, usePanelAnimationSettings } from "../../panelAnimations";
-import { ProjectFavicon } from "../ProjectFavicon";
 import {
   WorkspaceBreadcrumb,
   WorkspaceBreadcrumbItem,
   WorkspaceBreadcrumbSeparator,
 } from "../WorkspaceBreadcrumb";
 import { cn } from "~/lib/utils";
+import { Button } from "../ui/button";
 
 interface ChatHeaderProps {
   activeThreadEnvironmentId: EnvironmentId;
@@ -56,13 +56,14 @@ interface ChatHeaderProps {
   isServerThread: boolean;
   activeProjectName: string | undefined;
   activeProjectCwd: string | null;
-  activeProjectFaviconPath: string | null;
   openInCwd: string | null;
   activeProjectScripts: ReadonlyArray<ProjectScript> | undefined;
   preferredScriptId: string | null;
   keybindings: ResolvedKeybindingsConfig;
   availableEditors: ReadonlyArray<EditorId>;
   rightPanelOpen: boolean;
+  diffWorkspaceOpen: boolean;
+  diffWorkspaceAvailable: boolean;
   gitCwd: string | null;
   readonly onOpenPullRequest?: ((number: number) => void) | undefined;
   onNewThreadInProject: () => void;
@@ -73,6 +74,7 @@ interface ChatHeaderProps {
     input: NewProjectScriptInput,
   ) => Promise<ProjectScriptActionResult>;
   onDeleteProjectScript: (scriptId: string) => Promise<ProjectScriptActionResult>;
+  onToggleDiffWorkspace: () => void;
 }
 
 /**
@@ -126,13 +128,14 @@ export const ChatHeader = memo(function ChatHeader({
   isServerThread,
   activeProjectName,
   activeProjectCwd,
-  activeProjectFaviconPath,
   openInCwd,
   activeProjectScripts,
   preferredScriptId,
   keybindings,
   availableEditors,
   rightPanelOpen,
+  diffWorkspaceOpen,
+  diffWorkspaceAvailable,
   gitCwd,
   onOpenPullRequest,
   onNewThreadInProject,
@@ -140,6 +143,7 @@ export const ChatHeader = memo(function ChatHeader({
   onAddProjectScript,
   onUpdateProjectScript,
   onDeleteProjectScript,
+  onToggleDiffWorkspace,
 }: ChatHeaderProps) {
   const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
     usePanelAnimationSettings();
@@ -303,9 +307,40 @@ export const ChatHeader = memo(function ChatHeader({
       className="@container/header-actions flex min-w-0 flex-1 items-center gap-2 sm:gap-3"
       onContextMenu={handleHeaderContextMenu}
     >
+      {isServerThread ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button"
+                size="icon-xs"
+                variant={diffWorkspaceOpen ? "secondary" : "ghost"}
+                className="shrink-0"
+                aria-label={diffWorkspaceOpen ? "Show chat" : "Show full diff"}
+                aria-pressed={diffWorkspaceOpen}
+                disabled={!diffWorkspaceAvailable}
+                onClick={onToggleDiffWorkspace}
+              />
+            }
+          >
+            {diffWorkspaceOpen ? (
+              <MessageSquareIcon className="size-3.5" />
+            ) : (
+              <FileDiffIcon className="size-3.5" />
+            )}
+          </TooltipTrigger>
+          <TooltipPopup side="top">
+            {diffWorkspaceAvailable
+              ? diffWorkspaceOpen
+                ? "Return to chat"
+                : "Open the full diff"
+              : "Diff is unavailable because this project is not a Git repository"}
+          </TooltipPopup>
+        </Tooltip>
+      ) : null}
       <WorkspaceBreadcrumb
         ariaLabel="Thread breadcrumb"
-        className="flex-1 overflow-clip [overflow-clip-margin:2px]"
+        className="max-w-[50%] shrink overflow-clip [overflow-clip-margin:2px]"
       >
         {/* The project always leads the header: knowing which project a
             thread lives in is priority zero, and the thread title alone
@@ -324,12 +359,6 @@ export const ChatHeader = memo(function ChatHeader({
                     />
                   }
                 >
-                  <ProjectFavicon
-                    environmentId={activeThreadEnvironmentId}
-                    cwd={activeProjectCwd ?? ""}
-                    faviconPath={activeProjectFaviconPath}
-                    className="size-3.5"
-                  />
                   <span className="max-w-40 truncate">{activeProjectName}</span>
                 </TooltipTrigger>
                 <TooltipPopup side="top">New thread in {activeProjectName}</TooltipPopup>
@@ -338,7 +367,7 @@ export const ChatHeader = memo(function ChatHeader({
             <WorkspaceBreadcrumbSeparator />
           </>
         ) : null}
-        <WorkspaceBreadcrumbItem current className="min-w-10 flex-1">
+        <WorkspaceBreadcrumbItem current className="min-w-10">
           {renamingTitle !== null ? (
             <input
               autoFocus
@@ -395,7 +424,7 @@ export const ChatHeader = memo(function ChatHeader({
         ref={headerActionsRef}
         data-chat-header-actions
         className={cn(
-          "flex shrink-0 items-center justify-end gap-2 @3xl/header-actions:gap-3",
+          "ml-auto flex shrink-0 items-center justify-end gap-2 @3xl/header-actions:gap-3",
           rightPanelOpen ? "pr-0" : "pr-16",
           "[[data-panel-animations=true]_&]:motion-safe:transition-[padding-right] [[data-panel-animations=true]_&]:motion-safe:[transition-duration:var(--panel-animation-duration)] [[data-panel-animations=true]_&]:motion-safe:ease-out",
         )}

@@ -86,6 +86,7 @@ interface AnnotatableCodeViewProps {
   options: StyledDiffCodeViewOptions<DiffCommentAnnotationGroup>;
   viewerRef?: Ref<AnnotatableCodeViewHandle>;
   className?: string;
+  unsafeCSSExtra?: string;
   renderHeaderFilenameSuffix: (fileDiff: FileDiffMetadata) => ReactNode;
   renderHeaderPrefix: (
     fileDiff: FileDiffMetadata,
@@ -107,6 +108,7 @@ export function AnnotatableCodeView({
   options,
   viewerRef,
   className,
+  unsafeCSSExtra,
   renderHeaderFilenameSuffix,
   renderHeaderPrefix,
 }: AnnotatableCodeViewProps) {
@@ -245,6 +247,7 @@ export function AnnotatableCodeView({
       key={codeViewKey}
       {...(viewerRef ? { viewerRef } : {})}
       {...(className ? { className } : {})}
+      {...(unsafeCSSExtra ? { unsafeCSSExtra } : {})}
       items={items}
       selectedLines={selectedLines}
       onSelectedLinesChange={setSelectedLines}

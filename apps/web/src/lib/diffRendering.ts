@@ -6,6 +6,9 @@ export const DIFF_THEME_NAMES = {
   dark: "pierre-dark",
 } as const;
 
+/** Visual Studio's default dark syntax palette, used by the full diff workspace. */
+export const VISUAL_STUDIO_DIFF_THEME = "visual-studio-dark-csharp";
+
 export type DiffThemeName = (typeof DIFF_THEME_NAMES)[keyof typeof DIFF_THEME_NAMES];
 
 export function resolveDiffThemeName(theme: "light" | "dark"): DiffThemeName {

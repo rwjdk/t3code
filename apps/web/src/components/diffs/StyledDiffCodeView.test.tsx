@@ -54,6 +54,9 @@ describe("StyledDiffCodeView", () => {
       expect.stringContaining("[data-unmodified-lines]::before"),
     );
     expect(testState.codeViewOptions?.unsafeCSS).toEqual(
+      expect.stringContaining("width: 100cqi !important"),
+    );
+    expect(testState.codeViewOptions?.unsafeCSS).toEqual(
       expect.stringContaining(")[data-expand-index]\n  [data-unmodified-lines]"),
     );
   });

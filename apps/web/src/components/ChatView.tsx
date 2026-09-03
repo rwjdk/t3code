@@ -192,6 +192,7 @@ import {
   WifiOffIcon,
 } from "lucide-react";
 import { cn, randomHex } from "~/lib/utils";
+import { useSidebar } from "./ui/sidebar";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { decodeProjectScriptKeybindingRule } from "~/lib/projectScriptKeybindings";
 import { type NewProjectScriptInput } from "./ProjectScriptsControl";
@@ -1319,6 +1320,12 @@ function ChatViewContent(props: ChatViewProps) {
     reserveTitleBarControlInset = true,
     forceExpandedMobileComposer = false,
   } = props;
+  const {
+    open: leftSidebarOpen,
+    openMobile,
+    setOpen: setLeftSidebarOpen,
+    setOpenMobile,
+  } = useSidebar();
   const draftId = routeKind === "draft" ? props.draftId : null;
   const threadSyncPhase = routeKind === "server" ? (props.threadSyncPhase ?? null) : null;
   const threadDetailLoading = threadSyncPhase === "loading";
@@ -1768,6 +1775,15 @@ function ChatViewContent(props: ChatViewProps) {
     [activeThreadEnvironmentId, activeThreadId],
   );
   const activeThreadKey = activeThreadRef ? scopedThreadKey(activeThreadRef) : null;
+  const [diffWorkspaceThreadKey, setDiffWorkspaceThreadKey] = useState<string | null>(null);
+  const [diffWorkspaceLayoutSnapshot, setDiffWorkspaceLayoutSnapshot] = useState<{
+    readonly threadRef: ScopedThreadRef;
+    readonly threadKey: string;
+    readonly leftSidebarOpen: boolean;
+    readonly leftSidebarMobileOpen: boolean;
+    readonly rightPanelOpen: boolean;
+  } | null>(null);
+  const diffWorkspaceOpen = activeThreadKey !== null && diffWorkspaceThreadKey === activeThreadKey;
   const activeThreadShell = useThreadShell(isServerThread ? activeThreadRef : null);
   const changeRequestSnapshotByKey = useAtomValue(threadChangeRequestSnapshotsAtom);
   const [timelineAnchor, setTimelineAnchor] = useState<{
@@ -3066,6 +3082,63 @@ function ChatViewContent(props: ChatViewProps) {
       useRightPanelStore.getState().toggle(activeThreadRef, "diff");
     }
   }, [activeThreadRef, diffOpen, isServerThread, onDiffPanelOpen]);
+  const restoreDiffWorkspaceLayout = useCallback(
+    (snapshot: NonNullable<typeof diffWorkspaceLayoutSnapshot>) => {
+      setLeftSidebarOpen(snapshot.leftSidebarOpen);
+      setOpenMobile(snapshot.leftSidebarMobileOpen);
+      if (snapshot.rightPanelOpen) {
+        useRightPanelStore.getState().show(snapshot.threadRef);
+      } else {
+        useRightPanelStore.getState().close(snapshot.threadRef);
+      }
+    },
+    [setLeftSidebarOpen, setOpenMobile],
+  );
+
+  useEffect(() => {
+    if (!diffWorkspaceLayoutSnapshot || diffWorkspaceLayoutSnapshot.threadKey === activeThreadKey) {
+      return;
+    }
+    restoreDiffWorkspaceLayout(diffWorkspaceLayoutSnapshot);
+    setDiffWorkspaceLayoutSnapshot(null);
+    setDiffWorkspaceThreadKey(null);
+  }, [activeThreadKey, diffWorkspaceLayoutSnapshot, restoreDiffWorkspaceLayout]);
+
+  const onToggleDiffWorkspace = useCallback(() => {
+    if (!isServerThread || !isGitRepo || activeThreadKey === null || !activeThreadRef) return;
+    const opening = diffWorkspaceThreadKey !== activeThreadKey;
+    setDiffWorkspaceThreadKey(opening ? activeThreadKey : null);
+    if (opening) {
+      setDiffWorkspaceLayoutSnapshot({
+        threadRef: activeThreadRef,
+        threadKey: activeThreadKey,
+        leftSidebarOpen,
+        leftSidebarMobileOpen: openMobile,
+        rightPanelOpen,
+      });
+      setLeftSidebarOpen(false);
+      setOpenMobile(false);
+      useRightPanelStore.getState().close(activeThreadRef);
+      return;
+    }
+    if (diffWorkspaceLayoutSnapshot) {
+      restoreDiffWorkspaceLayout(diffWorkspaceLayoutSnapshot);
+      setDiffWorkspaceLayoutSnapshot(null);
+    }
+  }, [
+    activeThreadKey,
+    activeThreadRef,
+    diffWorkspaceLayoutSnapshot,
+    diffWorkspaceThreadKey,
+    isGitRepo,
+    isServerThread,
+    leftSidebarOpen,
+    openMobile,
+    restoreDiffWorkspaceLayout,
+    rightPanelOpen,
+    setLeftSidebarOpen,
+    setOpenMobile,
+  ]);
 
   const envLocked = Boolean(
     activeThread &&
@@ -3357,17 +3430,22 @@ function ChatViewContent(props: ChatViewProps) {
       const wantsNewTerminal = Boolean(options?.preferNewTerminal) || isBaseTerminalBusy;
       const shouldCreateNewTerminal = wantsNewTerminal;
       const targetWorktreePath = options?.worktreePath ?? activeThread.worktreePath ?? null;
+      const isBackground = script.background ?? false;
 
       setTerminalUiLaunchContext({
         threadId: activeThreadId,
         cwd: targetCwd,
         worktreePath: targetWorktreePath,
       });
-      setTerminalOpen(true);
+      if (!isBackground) {
+        setTerminalOpen(true);
+      }
       if (!activeThreadRef) {
         return;
       }
-      setTerminalFocusRequestId((value) => value + 1);
+      if (!isBackground) {
+        setTerminalFocusRequestId((value) => value + 1);
+      }
 
       const runtimeEnv = projectScriptRuntimeEnv({
         project: {
@@ -7423,7 +7501,6 @@ function ChatViewContent(props: ChatViewProps) {
             isServerThread={isServerThread}
             activeProjectName={activeProject?.title}
             activeProjectCwd={activeProject?.workspaceRoot ?? null}
-            activeProjectFaviconPath={activeProject?.faviconPath ?? null}
             openInCwd={gitCwd}
             activeProjectScripts={activeProject?.scripts}
             preferredScriptId={
@@ -7432,12 +7509,15 @@ function ChatViewContent(props: ChatViewProps) {
             keybindings={keybindings}
             availableEditors={availableEditors}
             rightPanelOpen={rightPanelOpen}
+            diffWorkspaceOpen={diffWorkspaceOpen}
+            diffWorkspaceAvailable={isGitRepo}
             gitCwd={gitCwd}
             onNewThreadInProject={handleNewThreadInActiveProject}
             onRunProjectScript={runProjectScript}
             onAddProjectScript={saveProjectScript}
             onUpdateProjectScript={updateProjectScript}
             onDeleteProjectScript={deleteProjectScript}
+            onToggleDiffWorkspace={onToggleDiffWorkspace}
           />
         </WorkspacePageHeader>
 
@@ -7451,9 +7531,33 @@ function ChatViewContent(props: ChatViewProps) {
         />
         {/* Main content area with optional plan sidebar */}
         <div className="flex min-h-0 min-w-0 flex-1">
+          {diffWorkspaceOpen ? (
+            <Suspense
+              fallback={
+                <div
+                  className="flex min-h-0 flex-1 items-center justify-center text-xs text-muted-foreground"
+                  role="status"
+                >
+                  Loading full diff...
+                </div>
+              }
+            >
+              <DiffPanel
+                key={`workspace:${activeThreadKey}:${diffPanelGitStatusResolutionKey}`}
+                mode="embedded"
+                composerDraftTarget={composerDraftTarget}
+                initialGitScope={initialDiffPanelGitScope}
+                workspaceMutationId={workspaceMutationId}
+                showFileTree
+              />
+            </Suspense>
+          ) : null}
           {/* Chat column */}
           <div
-            className="relative flex min-h-0 min-w-0 flex-1 flex-col"
+            className={cn(
+              "relative min-h-0 min-w-0 flex-1 flex-col",
+              diffWorkspaceOpen ? "hidden" : "flex",
+            )}
             data-chat-workspace-drop-target="true"
             onDragEnter={workspaceFileDropHandlers.onDragEnter}
             onDragOver={workspaceFileDropHandlers.onDragOver}

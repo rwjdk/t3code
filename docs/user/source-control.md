@@ -37,6 +37,16 @@ T3 Code works with the platforms your team already uses:
   `AGENTS.md` along with recent commit subjects. Claude writers also follow `CLAUDE.md`
 - Supports GitHub Pull Requests, GitLab Merge Requests, Bitbucket Pull Requests, and Azure DevOps Pull Requests
 
+**Review local changes**
+
+Use **Diff** beside the project and thread name to replace the conversation with a full-width diff
+workspace. T3 Code remembers and collapses the project sidebar and right panel while the workspace
+is open, then restores both when you return to **Chat**. The changed-files tree stays on the right;
+selecting a file shows that file alone on the left in a Visual Studio-style dark diff.
+
+The compact **Diff** surface remains available in the right panel when you want a quick review
+without leaving the conversation.
+
 **Stay on top of open reviews**
 
 - See if your current branch already has an open PR/MR
