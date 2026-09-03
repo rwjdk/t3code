@@ -5,14 +5,14 @@ import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime"
 import { truncate } from "@t3tools/shared/String";
 import { useNavigate } from "@tanstack/react-router";
 import * as Effect from "effect/Effect";
-import { PlayIcon, RefreshCwIcon } from "lucide-react";
+import { ChevronDownIcon, PlayIcon, RefreshCwIcon } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 
 import { markPromotedDraftThreadByRef, useComposerDraftStore } from "../../composerDraftStore";
 import { PrimaryEnvironmentHttpClient } from "../../environments/primary/httpClient";
 import { useNewThreadHandler } from "../../hooks/useHandleNewThread";
 import { runPrimaryHttp } from "../../lib/runtime";
-import { newMessageId } from "../../lib/utils";
+import { cn, newMessageId } from "../../lib/utils";
 import { resolveDefaultProviderModelSelection } from "../../providerInstances";
 import { useRelewiseSettings } from "../../relewiseSettings";
 import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
@@ -47,6 +47,7 @@ type LoadState =
 export const RelewiseBacklog = memo(function RelewiseBacklog() {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [refreshing, setRefreshing] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [startingCardId, setStartingCardId] = useState<string | null>(null);
   const [detailsCard, setDetailsCard] = useState<RelewiseBacklogCard | null>(null);
   const [pickerCard, setPickerCard] = useState<RelewiseBacklogCard | null>(null);
@@ -266,13 +267,15 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
   if (state.cards.length === 0) return null;
 
   return (
-    <section className="min-h-0 border-t border-sidebar-border/70 pt-2" aria-label="Trello">
-      <div className="mb-1 grid grid-cols-[minmax(0,1fr)_2rem_1.25rem] items-center gap-2 px-2 text-xs font-medium text-sidebar-muted-foreground">
-        <span>Trello</span>
-        <span className="text-right tabular-nums opacity-60">{state.cards.length}</span>
+    <section className="min-h-0" aria-label="Trello">
+      <div className="mb-1 mt-3 flex items-center gap-2 px-2.5">
+        <span className="text-xs font-medium text-muted-foreground/50">
+          Trello ({state.cards.length})
+        </span>
+        <span className="h-px flex-1 bg-sidebar-border/60" />
         <button
           type="button"
-          className="flex size-5 items-center justify-center rounded hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
+          className="flex size-5 items-center justify-center rounded text-muted-foreground/50 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
           onClick={refresh}
           disabled={refreshing}
           aria-label="Refresh Trello"
@@ -280,8 +283,24 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
         >
           <RefreshCwIcon className={refreshing ? "size-3 animate-spin" : "size-3"} />
         </button>
+        <button
+          type="button"
+          className="flex size-5 items-center justify-center rounded text-muted-foreground/50 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          aria-controls="trello-backlog-cards"
+          aria-label={expanded ? "Collapse Trello" : "Expand Trello"}
+        >
+          <ChevronDownIcon
+            aria-hidden
+            className={cn("size-3 transition-transform", expanded && "rotate-180")}
+          />
+        </button>
       </div>
-      <ul className="max-h-72 space-y-0.5 overflow-y-auto">
+      <ul
+        id="trello-backlog-cards"
+        className={cn("max-h-72 space-y-0.5 overflow-y-auto", !expanded && "hidden")}
+      >
         {state.cards.map((card) => (
           <li
             key={card.id}
