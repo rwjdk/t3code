@@ -30,14 +30,12 @@ import { openDiffFilePrimaryAction } from "../diffFileActions";
 import { useCheckpointDiff } from "~/lib/checkpointDiffState";
 import { cn } from "~/lib/utils";
 import { selectThreadDiffPanelSelection, useDiffPanelStore } from "../diffPanelStore";
-import { useTheme } from "../hooks/useTheme";
 import {
   buildFileDiffContentVersion,
   buildFileDiffIdentityKey,
   getDiffCollapseIconClassName,
   getDiffLineStat,
   getRenderablePatch,
-  resolveDiffThemeName,
   resolveFileDiffPath,
   VISUAL_STUDIO_DIFF_THEME,
 } from "../lib/diffRendering";
@@ -51,7 +49,6 @@ import { useClientSettings } from "../hooks/useSettings";
 import { formatShortTimestamp } from "../timestampFormat";
 import { DiffFilePathCopyButton } from "./DiffFilePathCopyButton";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
-import { DiffWorkerVisualStudioThemeOverride } from "./DiffWorkerPoolProvider";
 import { DiffStatLabel } from "./chat/DiffStatLabel";
 import { AnnotatableCodeView, type AnnotatableCodeViewHandle } from "./diffs/AnnotatableCodeView";
 import { Button } from "./ui/button";
@@ -86,7 +83,6 @@ import { createGitDiffFileContentsLoader } from "../lib/diffFileContents";
 import { buildTurnDiffTree, type TurnDiffTreeNode } from "../lib/turnDiffTree";
 import { PierreEntryIcon } from "./chat/PierreEntryIcon";
 
-type DiffThemeType = "light" | "dark";
 const AUTOMATIC_BASE_REF = "__automatic_base_ref__";
 const VISUAL_STUDIO_DIFF_UNSAFE_CSS = `
 [data-diffs-header],
@@ -136,6 +132,10 @@ const VISUAL_STUDIO_DIFF_UNSAFE_CSS = `
   --diffs-computed-selected-line-bg: #6a1713 !important;
   --diffs-line-bg: #6a1713 !important;
 }
+
+[data-diffs-header] [data-change-icon] {
+  display: none !important;
+}
 `;
 
 interface CollapsedDiffFilesState {
@@ -162,7 +162,6 @@ export default function DiffPanel({
   workspaceMutationId,
   showFileTree = false,
 }: DiffPanelProps) {
-  const { resolvedTheme } = useTheme();
   const settings = useClientSettings();
   const [initialGitScope] = useState(initialGitScopeProp);
   const diffRenderMode = useDiffPanelStore((state) => state.diffRenderMode);
@@ -432,10 +431,10 @@ export default function DiffPanel({
   const hasNoNetChanges = hasResolvedPatch && selectedPatch.trim().length === 0;
   const renderablePatch = useMemo(
     () =>
-      getRenderablePatch(selectedPatch, `diff-panel:${resolvedTheme}`, {
+      getRenderablePatch(selectedPatch, `diff-panel:${VISUAL_STUDIO_DIFF_THEME}`, {
         compactPartialHunkOffsets: selectedTurnId === null,
       }),
-    [resolvedTheme, selectedPatch, selectedTurnId],
+    [selectedPatch, selectedTurnId],
   );
   const renderableFiles = useMemo(() => {
     if (!renderablePatch || renderablePatch.kind !== "files") {
@@ -814,7 +813,7 @@ export default function DiffPanel({
             </TooltipPopup>
           </Tooltip>
         )}
-        {codeViewFiles.length > 0 && (
+        {!showFileTree && codeViewFiles.length > 0 && (
           <Tooltip>
             <TooltipTrigger
               render={
@@ -906,14 +905,8 @@ export default function DiffPanel({
     <DiffPanelShell
       mode={mode}
       header={headerRow}
-      {...(showFileTree
-        ? {
-            className:
-              "bg-[#1e1e1e] text-[#d4d4d4] [--accent:#37373d] [--accent-foreground:#ffffff] [--background:#1e1e1e] [--border:#3f3f46] [--destructive:#f14c4c] [--foreground:#d4d4d4] [--muted:#2d2d30] [--muted-foreground:#969696] [--primary:#007acc] [--success:#4ec9b0]",
-          }
-        : {})}
+      className="bg-[#1e1e1e] text-[#d4d4d4] [--accent:#37373d] [--accent-foreground:#ffffff] [--background:#1e1e1e] [--border:#3f3f46] [--destructive:#f14c4c] [--foreground:#d4d4d4] [--muted:#2d2d30] [--muted-foreground:#969696] [--primary:#007acc] [--success:#4ec9b0]"
     >
-      {showFileTree ? <DiffWorkerVisualStudioThemeOverride /> : null}
       {!activeThread ? (
         <div className="flex flex-1 items-center justify-center px-5 text-center text-xs text-muted-foreground/70">
           Select a thread to inspect turn diffs.
@@ -1013,7 +1006,7 @@ export default function DiffPanel({
                   sectionId={reviewSectionId}
                   sectionTitle={reviewSectionTitle}
                   composerDraftTarget={composerDraftTarget}
-                  {...(showFileTree ? { unsafeCSSExtra: VISUAL_STUDIO_DIFF_UNSAFE_CSS } : {})}
+                  unsafeCSSExtra={VISUAL_STUDIO_DIFF_UNSAFE_CSS}
                   renderHeaderFilenameSuffix={(fileDiff) => (
                     <DiffFilePathCopyButton filePath={resolveFileDiffPath(fileDiff)} />
                   )}
@@ -1056,11 +1049,9 @@ export default function DiffPanel({
                     diffStyle: diffRenderMode === "split" ? "split" : "unified",
                     lineDiffType: "none",
                     overflow: wordWrap ? "wrap" : "scroll",
-                    theme: showFileTree
-                      ? VISUAL_STUDIO_DIFF_THEME
-                      : resolveDiffThemeName(resolvedTheme),
+                    theme: VISUAL_STUDIO_DIFF_THEME,
                     preferredHighlighter: PREFERRED_HIGHLIGHTER,
-                    themeType: (showFileTree ? "dark" : resolvedTheme) as DiffThemeType,
+                    themeType: "dark",
                     stickyHeaders: true,
                     ...(currentLoadDiffFiles ? { loadDiffFiles } : {}),
                   }}
@@ -1070,7 +1061,7 @@ export default function DiffPanel({
                     nodes={diffTreeNodes}
                     fileCount={renderableFiles.length}
                     selectedFilePath={selectedTreeFilePath}
-                    theme={showFileTree ? "dark" : resolvedTheme}
+                    theme="dark"
                     onSelectFile={revealDiffFile}
                   />
                 ) : null}

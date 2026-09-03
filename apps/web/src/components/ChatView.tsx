@@ -178,7 +178,10 @@ import {
   deriveAgentPanelModel,
   foldSubagentActivities,
 } from "@t3tools/client-runtime/state/subagentRuntime";
-import { DiffWorkerPoolProvider } from "./DiffWorkerPoolProvider";
+import {
+  DiffWorkerPoolProvider,
+  DiffWorkerVisualStudioThemeOverride,
+} from "./DiffWorkerPoolProvider";
 import { BranchToolbar } from "./BranchToolbar";
 import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
 import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
@@ -3104,40 +3107,49 @@ function ChatViewContent(props: ChatViewProps) {
     setDiffWorkspaceThreadKey(null);
   }, [activeThreadKey, diffWorkspaceLayoutSnapshot, restoreDiffWorkspaceLayout]);
 
-  const onToggleDiffWorkspace = useCallback(() => {
+  const openDiffWorkspace = useCallback(() => {
     if (!isServerThread || !isGitRepo || activeThreadKey === null || !activeThreadRef) return;
-    const opening = diffWorkspaceThreadKey !== activeThreadKey;
-    setDiffWorkspaceThreadKey(opening ? activeThreadKey : null);
-    if (opening) {
-      setDiffWorkspaceLayoutSnapshot({
-        threadRef: activeThreadRef,
-        threadKey: activeThreadKey,
-        leftSidebarOpen,
-        leftSidebarMobileOpen: openMobile,
-        rightPanelOpen,
-      });
-      setLeftSidebarOpen(false);
-      setOpenMobile(false);
-      useRightPanelStore.getState().close(activeThreadRef);
+    if (diffWorkspaceThreadKey === activeThreadKey) return;
+    setDiffWorkspaceThreadKey(activeThreadKey);
+    setDiffWorkspaceLayoutSnapshot({
+      threadRef: activeThreadRef,
+      threadKey: activeThreadKey,
+      leftSidebarOpen,
+      leftSidebarMobileOpen: openMobile,
+      rightPanelOpen,
+    });
+    setLeftSidebarOpen(false);
+    setOpenMobile(false);
+    useRightPanelStore.getState().close(activeThreadRef);
+  }, [
+    activeThreadKey,
+    activeThreadRef,
+    diffWorkspaceThreadKey,
+    isGitRepo,
+    isServerThread,
+    leftSidebarOpen,
+    openMobile,
+    rightPanelOpen,
+    setLeftSidebarOpen,
+    setOpenMobile,
+  ]);
+
+  const onToggleDiffWorkspace = useCallback(() => {
+    if (diffWorkspaceThreadKey !== activeThreadKey) {
+      openDiffWorkspace();
       return;
     }
+    setDiffWorkspaceThreadKey(null);
     if (diffWorkspaceLayoutSnapshot) {
       restoreDiffWorkspaceLayout(diffWorkspaceLayoutSnapshot);
       setDiffWorkspaceLayoutSnapshot(null);
     }
   }, [
     activeThreadKey,
-    activeThreadRef,
     diffWorkspaceLayoutSnapshot,
     diffWorkspaceThreadKey,
-    isGitRepo,
-    isServerThread,
-    leftSidebarOpen,
-    openMobile,
+    openDiffWorkspace,
     restoreDiffWorkspaceLayout,
-    rightPanelOpen,
-    setLeftSidebarOpen,
-    setOpenMobile,
   ]);
 
   const envLocked = Boolean(
@@ -7269,10 +7281,10 @@ function ChatViewContent(props: ChatViewProps) {
     (turnId: TurnId, filePath?: string) => {
       if (!isServerThread || !activeThreadRef) return;
       useDiffPanelStore.getState().selectTurn(activeThreadRef, turnId, filePath);
-      useRightPanelStore.getState().open(activeThreadRef, "diff");
       onDiffPanelOpen?.();
+      openDiffWorkspace();
     },
-    [activeThreadRef, isServerThread, onDiffPanelOpen],
+    [activeThreadRef, isServerThread, onDiffPanelOpen, openDiffWorkspace],
   );
   // Both the Map and the revert handler are read from refs at call-time so
   // the callback reference is fully stable and never busts context identity.
@@ -7475,6 +7487,9 @@ function ChatViewContent(props: ChatViewProps) {
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
+      {diffWorkspaceOpen || renderedRightPanelSurface?.kind === "diff" ? (
+        <DiffWorkerVisualStudioThemeOverride />
+      ) : null}
       <div
         className={cn(
           "flex min-h-0 min-w-0 flex-col overflow-x-hidden",
