@@ -270,6 +270,7 @@ jobs:
 
       - id: relay_state
         name: Read production relay tracing config
+        if: github.repository == 'pingdotgg/t3code'
         shell: bash
         run: |
           vp run --filter t3code-relay deploy \
@@ -279,6 +280,7 @@ jobs:
             --github-env-file "$RUNNER_TEMP/relay-client-tracing.env"
 
       - name: Upload relay client tracing config
+        if: github.repository == 'pingdotgg/t3code'
         uses: actions/upload-artifact@v7
         with:
           name: relay-client-tracing-config
@@ -288,6 +290,7 @@ jobs:
 
       - id: public_config
         name: Resolve production relay public config
+        if: github.repository == 'pingdotgg/t3code'
         shell: bash
         run: |
           set -euo pipefail
@@ -317,6 +320,26 @@ jobs:
           echo "clerk_jwt_template=$CLERK_JWT_TEMPLATE" >> "$GITHUB_OUTPUT"
           echo "clerk_cli_oauth_client_id=$CLERK_CLI_OAUTH_CLIENT_ID" >> "$GITHUB_OUTPUT"
           echo "relay_url=https://$relay_domain" >> "$GITHUB_OUTPUT"
+
+      - id: fork_public_config
+        name: Prepare fork release public config
+        if: github.repository != 'pingdotgg/t3code'
+        shell: bash
+        run: |
+          touch "$RUNNER_TEMP/relay-client-tracing.env"
+          echo "clerk_publishable_key=" >> "$GITHUB_OUTPUT"
+          echo "clerk_jwt_template=" >> "$GITHUB_OUTPUT"
+          echo "clerk_cli_oauth_client_id=" >> "$GITHUB_OUTPUT"
+          echo "relay_url=" >> "$GITHUB_OUTPUT"
+
+      - name: Upload fork release tracing config
+        if: github.repository != 'pingdotgg/t3code'
+        uses: actions/upload-artifact@v7
+        with:
+          name: relay-client-tracing-config
+          path: ${{ runner.temp }}/relay-client-tracing.env
+          if-no-files-found: error
+          retention-days: 1
 
   # node-pty publishes no Linux prebuilt and the WSL backend runs under the
   # distro's own (Linux) Node, which can't load the Windows/Electron binary. We
@@ -757,7 +780,7 @@ jobs:
   publish_cli:
     name: Publish CLI to npm
     needs: [preflight, relay_public_config, quality, build]
-    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.relay_public_config.result == 'success' && needs.quality.result == 'success' && needs.build.result == 'success' }}
+    if: ${{ github.repository == 'pingdotgg/t3code' && !failure() && !cancelled() && needs.preflight.result == 'success' && needs.relay_public_config.result == 'success' && needs.quality.result == 'success' && needs.build.result == 'success' }}
     runs-on: ubuntu-24.04 # blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 10
     permissions:
@@ -834,8 +857,8 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    needs: [preflight, build, publish_cli]
-    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.build.result == 'success' && needs.publish_cli.result == 'success' }}
+    needs: [preflight, build]
+    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.build.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -921,7 +944,7 @@ jobs:
   publish_aur:
     name: Publish AUR package
     needs: [preflight, release]
-    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.release.result == 'success' }}
+    if: ${{ github.repository == 'pingdotgg/t3code' && !failure() && !cancelled() && needs.preflight.result == 'success' && needs.release.result == 'success' }}
     uses: ./.github/workflows/publish-aur.yml
     with:
       release_tag: ${{ needs.preflight.outputs.tag }}
@@ -931,7 +954,7 @@ jobs:
   deploy_web:
     name: Deploy hosted web app
     needs: [preflight, relay_public_config, release]
-    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.relay_public_config.result == 'success' && needs.release.result == 'success' }}
+    if: ${{ github.repository == 'pingdotgg/t3code' && !failure() && !cancelled() && needs.preflight.result == 'success' && needs.relay_public_config.result == 'success' && needs.release.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -1049,7 +1072,7 @@ jobs:
 
   finalize:
     name: Finalize release
-    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.release.result == 'success' && needs.preflight.outputs.release_channel == 'stable' }}
+    if: ${{ github.repository == 'pingdotgg/t3code' && !failure() && !cancelled() && needs.preflight.result == 'success' && needs.release.result == 'success' && needs.preflight.outputs.release_channel == 'stable' }}
     needs: [preflight, release]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -1129,7 +1152,7 @@ jobs:
   announce_discord:
     name: Announce release on Discord
     if: |
-      always() && !cancelled() &&
+      github.repository == 'pingdotgg/t3code' && always() && !cancelled() &&
       needs.preflight.result == 'success' &&
       needs.relay_public_config.result == 'success' &&
       needs.release.result == 'success' &&
