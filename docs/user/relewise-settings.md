@@ -18,3 +18,7 @@ by the Relewise backlog. Card details come from the configured Relewise Trello i
 The Trello sidebar section shows all cards assigned to the configured member. Cards are grouped by
 their Trello list, with higher-positioned lists first. Each list group can be collapsed independently.
 The In Progress group starts expanded; all other list groups start collapsed.
+
+The Trello card dialog provides the card description, dates, status, labels, and checklist progress.
+Checklist items can be completed or reopened directly in the dialog. The card can also be moved to
+another list and its labels can be added or removed without opening Trello.

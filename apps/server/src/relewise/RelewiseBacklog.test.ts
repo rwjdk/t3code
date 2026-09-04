@@ -5,7 +5,10 @@ import * as TestClock from "effect/testing/TestClock";
 
 import {
   archiveCardUrl,
+  checklistItemStateUrl,
   makeBacklogCache,
+  makeCardUpdate,
+  makeChecklistItemStateUpdate,
   makeStartCardUpdate,
   selectBacklogCards,
 } from "./RelewiseBacklog.ts";
@@ -15,6 +18,26 @@ describe("archiveCardUrl", () => {
     expect(archiveCardUrl("card/id")).toBe(
       "https://hub.relewise.com/api/v1/trello/cards/card%2Fid/archive",
     );
+  });
+});
+
+describe("Trello card updates", () => {
+  it("builds encoded checklist state requests", () => {
+    expect(checklistItemStateUrl("card/id", "item/id")).toBe(
+      "https://hub.relewise.com/api/v1/trello/cards/card%2Fid/checklistItems/item%2Fid/state",
+    );
+    expect(makeChecklistItemStateUpdate(" rwj@relewise.com ", true)).toEqual({
+      creatorId: "rwj@relewise.com",
+      state: 2,
+    });
+    expect(makeChecklistItemStateUpdate("rwj@relewise.com", false).state).toBe(1);
+  });
+
+  it("adds the trimmed creator to list and label updates", () => {
+    expect(makeCardUpdate(" rwj@relewise.com ", { newListId: "doing" })).toEqual({
+      creatorId: "rwj@relewise.com",
+      newListId: "doing",
+    });
   });
 });
 

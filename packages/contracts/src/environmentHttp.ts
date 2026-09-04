@@ -602,6 +602,38 @@ export const RelewiseBacklogResult = Schema.Struct({
 });
 export type RelewiseBacklogResult = typeof RelewiseBacklogResult.Type;
 
+export const RelewiseTrelloList = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+});
+export type RelewiseTrelloList = typeof RelewiseTrelloList.Type;
+
+export const RelewiseTrelloOptionsResult = Schema.Struct({
+  lists: Schema.Array(RelewiseTrelloList),
+  labels: Schema.Array(RelewiseBacklogLabel),
+});
+export type RelewiseTrelloOptionsResult = typeof RelewiseTrelloOptionsResult.Type;
+
+export const RelewiseMoveCardInput = Schema.Struct({
+  cardId: Schema.String,
+  listId: Schema.String,
+  userEmail: Schema.String,
+});
+
+export const RelewiseUpdateCardLabelsInput = Schema.Struct({
+  cardId: Schema.String,
+  labelIdsToAdd: Schema.Array(Schema.String),
+  labelIdsToRemove: Schema.Array(Schema.String),
+  userEmail: Schema.String,
+});
+
+export const RelewiseUpdateChecklistItemInput = Schema.Struct({
+  cardId: Schema.String,
+  checklistItemId: Schema.String,
+  isComplete: Schema.Boolean,
+  userEmail: Schema.String,
+});
+
 export const RelewiseStartCardInput = Schema.Struct({
   cardId: Schema.String,
   userEmail: Schema.String,
@@ -628,6 +660,53 @@ export class EnvironmentRelewiseHttpApi extends HttpApiGroup.make("relewise")
   .add(
     HttpApiEndpoint.post("refreshTrelloCards", "/api/relewise/trello/cards/refresh", {
       headers: OptionalBearerHeaders,
+      success: RelewiseBacklogResult,
+      error: [
+        EnvironmentAuthInvalidError,
+        EnvironmentScopeRequiredError,
+        EnvironmentHttpInternalServerError,
+      ],
+    }).middleware(EnvironmentAuthenticatedAuth),
+  )
+  .add(
+    HttpApiEndpoint.get("trelloOptions", "/api/relewise/trello/options", {
+      headers: OptionalBearerHeaders,
+      success: RelewiseTrelloOptionsResult,
+      error: [
+        EnvironmentAuthInvalidError,
+        EnvironmentScopeRequiredError,
+        EnvironmentHttpInternalServerError,
+      ],
+    }).middleware(EnvironmentAuthenticatedAuth),
+  )
+  .add(
+    HttpApiEndpoint.post("moveTrelloCard", "/api/relewise/trello/move", {
+      headers: OptionalBearerHeaders,
+      payload: RelewiseMoveCardInput,
+      success: RelewiseBacklogResult,
+      error: [
+        EnvironmentAuthInvalidError,
+        EnvironmentScopeRequiredError,
+        EnvironmentHttpInternalServerError,
+      ],
+    }).middleware(EnvironmentAuthenticatedAuth),
+  )
+  .add(
+    HttpApiEndpoint.post("updateTrelloCardLabels", "/api/relewise/trello/labels", {
+      headers: OptionalBearerHeaders,
+      payload: RelewiseUpdateCardLabelsInput,
+      success: RelewiseBacklogResult,
+      error: [
+        EnvironmentAuthInvalidError,
+        EnvironmentScopeRequiredError,
+        EnvironmentHttpInternalServerError,
+      ],
+    }).middleware(EnvironmentAuthenticatedAuth),
+  )
+  .add(
+    HttpApiEndpoint.post("updateTrelloChecklistItem", "/api/relewise/trello/checklist-item", {
+      headers: OptionalBearerHeaders,
+      payload: RelewiseUpdateChecklistItemInput,
       success: RelewiseBacklogResult,
       error: [
         EnvironmentAuthInvalidError,

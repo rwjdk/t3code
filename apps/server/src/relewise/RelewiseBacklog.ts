@@ -1,4 +1,8 @@
-import type { RelewiseBacklogCard, RelewiseBacklogLabel } from "@t3tools/contracts";
+import type {
+  RelewiseBacklogCard,
+  RelewiseBacklogLabel,
+  RelewiseTrelloOptionsResult,
+} from "@t3tools/contracts";
 import {
   Cache,
   Config,
@@ -30,6 +34,21 @@ export function makeStartCardUpdate(userEmail: string) {
 
 export function archiveCardUrl(cardId: string): string {
   return `${HUB_API_URL}/trello/cards/${encodeURIComponent(cardId)}/archive`;
+}
+
+export function checklistItemStateUrl(cardId: string, checklistItemId: string): string {
+  return `${HUB_API_URL}/trello/cards/${encodeURIComponent(cardId)}/checklistItems/${encodeURIComponent(checklistItemId)}/state`;
+}
+
+export function makeCardUpdate(userEmail: string, update: Record<string, unknown>) {
+  return { creatorId: userEmail.trim(), ...update };
+}
+
+export function makeChecklistItemStateUpdate(userEmail: string, isComplete: boolean) {
+  return {
+    creatorId: userEmail.trim(),
+    state: isComplete ? 2 : 1,
+  } as const;
 }
 
 const HubIdName = Schema.Struct({
@@ -86,6 +105,17 @@ const HubTrelloLabel = Schema.Struct({
 const HubTrelloLabels = Schema.Array(HubTrelloLabel);
 type HubTrelloLabel = typeof HubTrelloLabel.Type;
 
+const HubTrelloLists = Schema.Array(HubIdName);
+
+function mapLabel(label: HubTrelloLabel): RelewiseBacklogLabel {
+  return {
+    id: label.id,
+    name: label.name,
+    textColor: label.color?.textHex ?? null,
+    backgroundColor: label.color?.backgroundHex ?? null,
+  };
+}
+
 export function selectTrelloCards(
   cards: ReadonlyArray<HubTrelloCard>,
   labels: ReadonlyArray<HubTrelloLabel>,
@@ -108,14 +138,9 @@ export function selectTrelloCards(
       labels: card.labels.flatMap((cardLabel): ReadonlyArray<RelewiseBacklogLabel> => {
         if (cardLabel.name.length === 0) return [];
         const label = labelsById.get(cardLabel.id);
-        return [
-          {
-            id: cardLabel.id,
-            name: cardLabel.name,
-            textColor: label?.color?.textHex ?? null,
-            backgroundColor: label?.color?.backgroundHex ?? null,
-          },
-        ];
+        return label
+          ? [mapLabel(label)]
+          : [{ id: cardLabel.id, name: cardLabel.name, textColor: null, backgroundColor: null }];
       }),
       checklists: card.checklists.map((checklist) => ({
         id: checklist.id,
@@ -167,6 +192,7 @@ export class RelewiseBacklog extends Context.Service<
     readonly cards: Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
     readonly allCards: Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
     readonly refreshAll: Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
+    readonly options: Effect.Effect<RelewiseTrelloOptionsResult, RelewiseBacklogError>;
     readonly refresh: Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
     readonly startCard: (
       cardId: string,
@@ -174,6 +200,23 @@ export class RelewiseBacklog extends Context.Service<
     ) => Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
     readonly archiveCard: (
       cardId: string,
+    ) => Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
+    readonly moveCard: (
+      cardId: string,
+      listId: string,
+      userEmail: string,
+    ) => Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
+    readonly updateLabels: (
+      cardId: string,
+      labelIdsToAdd: ReadonlyArray<string>,
+      labelIdsToRemove: ReadonlyArray<string>,
+      userEmail: string,
+    ) => Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
+    readonly updateChecklistItem: (
+      cardId: string,
+      checklistItemId: string,
+      isComplete: boolean,
+      userEmail: string,
     ) => Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
   }
 >()("t3/relewise/RelewiseBacklog") {
@@ -219,6 +262,20 @@ export class RelewiseBacklog extends Context.Service<
       });
 
       const cache = yield* makeBacklogCache(loadCards());
+      const options = Effect.gen(function* () {
+        const [lists, labels] = yield* Effect.all(
+          [
+            client
+              .get(`${HUB_API_URL}/trello/boards/sprint/lists`)
+              .pipe(Effect.flatMap(HttpClientResponse.schemaBodyJson(HubTrelloLists))),
+            client
+              .get(`${HUB_API_URL}/trello/boards/${BACKLOG_BOARD_ID}/labels`)
+              .pipe(Effect.flatMap(HttpClientResponse.schemaBodyJson(HubTrelloLabels))),
+          ],
+          { concurrency: "unbounded" },
+        ).pipe(Effect.mapError((cause) => new RelewiseBacklogError({ cause })));
+        return { lists, labels: labels.filter((label) => label.name.length > 0).map(mapLabel) };
+      });
       const cards = cache.cards.pipe(
         Effect.map((allCards) => allCards.filter((card) => card.listName === BACKLOG_LIST_NAME)),
       );
@@ -252,13 +309,54 @@ export class RelewiseBacklog extends Context.Service<
         );
         return yield* cache.refresh;
       });
+      const updateCard = Effect.fn("RelewiseBacklog.updateCard")(function* (
+        cardId: string,
+        userEmail: string,
+        update: Record<string, unknown>,
+      ) {
+        yield* HttpClientRequest.put(
+          `${HUB_API_URL}/trello/cards/${encodeURIComponent(cardId)}`,
+        ).pipe(
+          HttpClientRequest.bodyJson(makeCardUpdate(userEmail, update)),
+          Effect.flatMap(client.execute),
+          Effect.asVoid,
+          Effect.mapError((cause) => new RelewiseBacklogError({ cause })),
+        );
+        return yield* cache.refresh;
+      });
+      const moveCard = (cardId: string, listId: string, userEmail: string) =>
+        updateCard(cardId, userEmail, { newListId: listId });
+      const updateLabels = (
+        cardId: string,
+        labelIdsToAdd: ReadonlyArray<string>,
+        labelIdsToRemove: ReadonlyArray<string>,
+        userEmail: string,
+      ) => updateCard(cardId, userEmail, { labelIdsToAdd, labelIdsToRemove });
+      const updateChecklistItem = Effect.fn("RelewiseBacklog.updateChecklistItem")(function* (
+        cardId: string,
+        checklistItemId: string,
+        isComplete: boolean,
+        userEmail: string,
+      ) {
+        yield* HttpClientRequest.put(checklistItemStateUrl(cardId, checklistItemId)).pipe(
+          HttpClientRequest.bodyJson(makeChecklistItemStateUpdate(userEmail, isComplete)),
+          Effect.flatMap(client.execute),
+          Effect.asVoid,
+          Effect.mapError((cause) => new RelewiseBacklogError({ cause })),
+        );
+        return yield* cache.refresh;
+      });
       return RelewiseBacklog.of({
         cards,
         allCards: cache.cards,
         refreshAll: cache.refresh,
+        options,
         refresh,
         startCard,
         archiveCard,
+        moveCard,
+        updateLabels,
+        updateChecklistItem,
       });
     }),
   );

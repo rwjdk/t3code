@@ -37,8 +37,64 @@ export const relewiseHttpApiLayer = HttpApiBuilder.group(
       .handle(
         "refreshTrelloCards",
         Effect.fn("environment.relewise.refreshTrelloCards")(function* (args) {
-          yield* authorize(args.headers.authorization);
+          yield* annotateEnvironmentRequest(args.endpoint.name);
+          yield* requireEnvironmentScope(AuthOrchestrationReadScope);
           return yield* handleLoad(backlog.refreshAll);
+        }),
+      )
+      .handle(
+        "trelloOptions",
+        Effect.fn("environment.relewise.trelloOptions")(function* (args) {
+          yield* annotateEnvironmentRequest(args.endpoint.name);
+          yield* requireEnvironmentScope(AuthOrchestrationReadScope);
+          return yield* backlog.options.pipe(
+            Effect.mapError(
+              () =>
+                new EnvironmentHttpInternalServerError({
+                  message: "Could not load Trello card options.",
+                }),
+            ),
+          );
+        }),
+      )
+      .handle(
+        "moveTrelloCard",
+        Effect.fn("environment.relewise.moveTrelloCard")(function* (args) {
+          yield* annotateEnvironmentRequest(args.endpoint.name);
+          yield* requireEnvironmentScope(AuthOrchestrationOperateScope);
+          return yield* handleLoad(
+            backlog.moveCard(args.payload.cardId, args.payload.listId, args.payload.userEmail),
+          );
+        }),
+      )
+      .handle(
+        "updateTrelloCardLabels",
+        Effect.fn("environment.relewise.updateTrelloCardLabels")(function* (args) {
+          yield* annotateEnvironmentRequest(args.endpoint.name);
+          yield* requireEnvironmentScope(AuthOrchestrationOperateScope);
+          return yield* handleLoad(
+            backlog.updateLabels(
+              args.payload.cardId,
+              args.payload.labelIdsToAdd,
+              args.payload.labelIdsToRemove,
+              args.payload.userEmail,
+            ),
+          );
+        }),
+      )
+      .handle(
+        "updateTrelloChecklistItem",
+        Effect.fn("environment.relewise.updateTrelloChecklistItem")(function* (args) {
+          yield* annotateEnvironmentRequest(args.endpoint.name);
+          yield* requireEnvironmentScope(AuthOrchestrationOperateScope);
+          return yield* handleLoad(
+            backlog.updateChecklistItem(
+              args.payload.cardId,
+              args.payload.checklistItemId,
+              args.payload.isComplete,
+              args.payload.userEmail,
+            ),
+          );
         }),
       )
       .handle(

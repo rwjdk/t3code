@@ -390,7 +390,10 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
       <RelewiseCardDetailsDialog
         card={detailsCard}
         onOpenChange={(open) => !open && setDetailsCard(null)}
-        onArchived={(cards) => setState({ status: "ready", cards })}
+        onCardsUpdated={(cards) => {
+          setState({ status: "ready", cards });
+          setDetailsCard(cards.find(({ id }) => id === detailsCard?.id) ?? null);
+        }}
         footer={
           <Button
             onClick={() => {

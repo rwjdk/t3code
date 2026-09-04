@@ -1702,7 +1702,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       <RelewiseCardDetailsDialog
         card={trelloDetailsOpen ? props.trelloCard : null}
         onOpenChange={setTrelloDetailsOpen}
-        onArchived={props.onTrelloCardsUpdated}
+        onCardsUpdated={props.onTrelloCardsUpdated}
       />
     </li>
   );
