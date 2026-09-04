@@ -30,6 +30,7 @@ import ProjectScriptsControl, {
   type NewProjectScriptInput,
   type ProjectScriptActionResult,
 } from "../ProjectScriptsControl";
+import { ProjectFavicon } from "../ProjectFavicon";
 import { OpenInPicker } from "./OpenInPicker";
 import { useRemoteOpenState, type RemoteOpenMode } from "../../remoteOpen";
 import { usePrimaryEnvironmentId } from "../../state/environments";
@@ -56,6 +57,8 @@ interface ChatHeaderProps {
   isServerThread: boolean;
   activeProjectName: string | undefined;
   activeProjectCwd: string | null;
+  activeProjectFaviconPath: string | null;
+  activeProjectIcon: import("@t3tools/contracts").ProjectIconOverride | null;
   openInCwd: string | null;
   activeProjectScripts: ReadonlyArray<ProjectScript> | undefined;
   preferredScriptId: string | null;
@@ -128,6 +131,8 @@ export const ChatHeader = memo(function ChatHeader({
   isServerThread,
   activeProjectName,
   activeProjectCwd,
+  activeProjectFaviconPath,
+  activeProjectIcon,
   openInCwd,
   activeProjectScripts,
   preferredScriptId,
@@ -359,6 +364,14 @@ export const ChatHeader = memo(function ChatHeader({
                     />
                   }
                 >
+                  <ProjectFavicon
+                    environmentId={activeThreadEnvironmentId}
+                    cwd={activeProjectCwd ?? ""}
+                    projectName={activeProjectName}
+                    faviconPath={activeProjectFaviconPath}
+                    projectIcon={activeProjectIcon}
+                    className="size-3.5"
+                  />
                   <span className="max-w-40 truncate">{activeProjectName}</span>
                 </TooltipTrigger>
                 <TooltipPopup side="top">New thread in {activeProjectName}</TooltipPopup>

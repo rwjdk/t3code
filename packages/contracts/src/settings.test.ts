@@ -228,6 +228,22 @@ describe("ClientSettings context window meter", () => {
   });
 });
 
+describe("ClientSettings composer collapse", () => {
+  it("collapses on blur and scroll by default and accepts opting out of each", () => {
+    const defaults = decodeClientSettings({});
+    expect(defaults.composerCollapseOnBlur).toBe(true);
+    expect(defaults.composerCollapseOnScroll).toBe(true);
+
+    const blurOff = decodeClientSettings({ composerCollapseOnBlur: false });
+    expect(blurOff.composerCollapseOnBlur).toBe(false);
+    expect(blurOff.composerCollapseOnScroll).toBe(true);
+
+    expect(
+      decodeClientSettingsPatch({ composerCollapseOnScroll: false }).composerCollapseOnScroll,
+    ).toBe(false);
+  });
+});
+
 describe("ServerSettings thread settlement", () => {
   it("defaults merge settlement on and inactivity settlement to three days", () => {
     const settings = decodeServerSettings({});
@@ -503,5 +519,24 @@ describe("ServerSettingsPatch string normalization", () => {
     expect(encoded.addProjectBaseDirectory).toBe("~/Development");
     expect(encoded.providers?.codex?.binaryPath).toBe("/opt/homebrew/bin/codex");
     expect(encoded.providers?.codex?.launchArgs).toBe("--strict-config");
+  });
+});
+
+describe("ServerSettings environment icon", () => {
+  it("defaults to null", () => {
+    expect(decodeServerSettings({}).environmentIcon).toBeNull();
+  });
+
+  it("keeps a kind this build knows", () => {
+    expect(decodeServerSettings({ environmentIcon: "mac-mini" }).environmentIcon).toBe("mac-mini");
+  });
+
+  it("decodes a kind from a newer server as null instead of failing the snapshot", () => {
+    expect(decodeServerSettings({ environmentIcon: "toaster" }).environmentIcon).toBeNull();
+  });
+
+  it("round-trips through encode", () => {
+    const settings = decodeServerSettings({ environmentIcon: "laptop" });
+    expect(encodeServerSettings(settings).environmentIcon).toBe("laptop");
   });
 });
