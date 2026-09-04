@@ -2,11 +2,19 @@ import type { OrchestrationShellSnapshot } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
 import {
+  needsLegacyMobileShellProjection,
   projectShellSnapshotForMobile,
   projectShellStreamItemForMobile,
 } from "./clientCompatibility.ts";
 
 describe("mobile shell snapshot compatibility", () => {
+  it("recognizes older mobile sessions that do not send a WebSocket surface", () => {
+    expect(needsLegacyMobileShellProjection({ deviceType: "mobile" })).toBe(true);
+    expect(needsLegacyMobileShellProjection({ deviceType: "tablet" })).toBe(true);
+    expect(needsLegacyMobileShellProjection({ surface: "mobile" })).toBe(true);
+    expect(needsLegacyMobileShellProjection({ deviceType: "desktop" })).toBe(false);
+  });
+
   it("maps expanded script icons while preserving legacy icons", () => {
     const snapshot = {
       snapshotSequence: 1,

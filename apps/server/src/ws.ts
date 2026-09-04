@@ -81,7 +81,10 @@ import {
   projectThreadDetailSnapshot,
 } from "./orchestration/ActivityPayloadProjection.ts";
 import { makeThreadLiveEventCoalescer } from "./orchestration/ThreadLiveEventCoalescer.ts";
-import { projectShellStreamItemForMobile } from "./orchestration/clientCompatibility.ts";
+import {
+  needsLegacyMobileShellProjection,
+  projectShellStreamItemForMobile,
+} from "./orchestration/clientCompatibility.ts";
 import {
   cleanupFailedUploadedAttachments,
   normalizeDispatchCommand,
@@ -1427,10 +1430,14 @@ const makeWsRpcLayer = (
                 { startImmediately: true },
               );
               const bufferedLiveStream = coalesceShellLiveStream(Stream.fromQueue(liveBuffer));
+              const projectForMobile = needsLegacyMobileShellProjection({
+                ...clientOrigin,
+                deviceType: currentSession.client.deviceType,
+              });
               const forClient = <E, R>(
                 stream: Stream.Stream<OrchestrationShellStreamItem, E, R>,
               ) =>
-                clientOrigin.surface === "mobile"
+                projectForMobile
                   ? stream.pipe(Stream.map(projectShellStreamItemForMobile))
                   : stream;
 

@@ -14,6 +14,15 @@ const LEGACY_MOBILE_SCRIPT_ICONS = new Set<ProjectScriptIcon>([
   "debug",
 ]);
 
+export function needsLegacyMobileShellProjection(input: {
+  readonly surface?: string | undefined;
+  readonly deviceType?: string | undefined;
+}): boolean {
+  return (
+    input.surface === "mobile" || input.deviceType === "mobile" || input.deviceType === "tablet"
+  );
+}
+
 /**
  * Mobile releases can lag behind the server and older builds decode script
  * icons as a closed union. Keep their shell snapshot decodable while desktop
