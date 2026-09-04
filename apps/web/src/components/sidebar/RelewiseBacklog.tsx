@@ -257,7 +257,6 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
           onClick={refresh}
           disabled={refreshing}
           aria-label="Retry loading Trello"
-          title="Retry loading Trello"
         >
           <RefreshCwIcon className={refreshing ? "size-3 animate-spin" : "size-3"} />
         </button>
@@ -279,7 +278,6 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
           onClick={refresh}
           disabled={refreshing}
           aria-label="Refresh Trello"
-          title="Refresh Trello"
         >
           <RefreshCwIcon className={refreshing ? "size-3 animate-spin" : "size-3"} />
         </button>
@@ -314,9 +312,7 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
               setDetailsCard(card);
             }}
           >
-            <span className="min-w-0 truncate text-xs text-sidebar-foreground" title={card.title}>
-              {card.title}
-            </span>
+            <span className="min-w-0 truncate text-xs text-sidebar-foreground">{card.title}</span>
             <span className="mt-0.5 flex self-start items-center justify-end gap-0.5">
               {card.labels.map((label) => (
                 <span
@@ -327,7 +323,6 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
                       ? undefined
                       : { backgroundColor: label.backgroundColor }
                   }
-                  title={label.name}
                   aria-label={label.name}
                 />
               ))}
@@ -342,7 +337,6 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
               onKeyDown={(event) => event.stopPropagation()}
               disabled={startingCardId !== null}
               aria-label={`Start working on this: ${card.title}`}
-              title="Start working on this"
             >
               <PlayIcon className="size-3" fill="currentColor" />
             </button>
