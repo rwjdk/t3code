@@ -81,6 +81,7 @@ import {
   projectThreadDetailSnapshot,
 } from "./orchestration/ActivityPayloadProjection.ts";
 import { makeThreadLiveEventCoalescer } from "./orchestration/ThreadLiveEventCoalescer.ts";
+import { projectShellStreamItemForMobile } from "./orchestration/clientCompatibility.ts";
 import {
   cleanupFailedUploadedAttachments,
   normalizeDispatchCommand,
@@ -1426,6 +1427,12 @@ const makeWsRpcLayer = (
                 { startImmediately: true },
               );
               const bufferedLiveStream = coalesceShellLiveStream(Stream.fromQueue(liveBuffer));
+              const forClient = <E, R>(
+                stream: Stream.Stream<OrchestrationShellStreamItem, E, R>,
+              ) =>
+                clientOrigin.surface === "mobile"
+                  ? stream.pipe(Stream.map(projectShellStreamItemForMobile))
+                  : stream;
 
               const loadSnapshot = projectionSnapshotQuery.getShellSnapshot().pipe(
                 Effect.tapError((cause) =>
@@ -1480,9 +1487,11 @@ const makeWsRpcLayer = (
                   ))
                 ) {
                   const snapshot = yield* loadSnapshot;
-                  return Stream.concat(
-                    Stream.make({ kind: "snapshot" as const, snapshot }),
-                    synchronizedThenLive,
+                  return forClient(
+                    Stream.concat(
+                      Stream.make({ kind: "snapshot" as const, snapshot }),
+                      synchronizedThenLive,
+                    ),
                   );
                 }
                 const catchUpStream = coalesceShellStream(
@@ -1500,16 +1509,18 @@ const makeWsRpcLayer = (
                       }),
                   ),
                 );
-                return Stream.concat(catchUpStream, synchronizedThenLive);
+                return forClient(Stream.concat(catchUpStream, synchronizedThenLive));
               }
 
               const snapshot = yield* loadSnapshot;
-              return Stream.concat(
-                Stream.make({
-                  kind: "snapshot" as const,
-                  snapshot,
-                }),
-                synchronizedThenLive,
+              return forClient(
+                Stream.concat(
+                  Stream.make({
+                    kind: "snapshot" as const,
+                    snapshot,
+                  }),
+                  synchronizedThenLive,
+                ),
               );
             }),
             { "rpc.aggregate": "orchestration" },
@@ -2096,6 +2107,12 @@ const makeWsRpcLayer = (
           observeRpcEffect(WS_METHODS.pullRequestsInvalidate, pullRequests.invalidate(input), {
             "rpc.aggregate": "pull-requests",
           }),
+        [WS_METHODS.pullRequestsSubscribeRefreshes]: () =>
+          observeRpcStream(
+            WS_METHODS.pullRequestsSubscribeRefreshes,
+            pullRequests.subscribeRefreshes,
+            { "rpc.aggregate": "pull-requests" },
+          ),
         [WS_METHODS.pullRequestsReviewerCandidates]: (input) =>
           observeRpcEffect(
             WS_METHODS.pullRequestsReviewerCandidates,
