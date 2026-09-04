@@ -859,6 +859,16 @@ const resolveGitCommitHash = Effect.fn("resolveGitCommitHash")(function* (repoRo
   return hash.toLowerCase();
 });
 
+const resolveUpstreamCommitHash = Effect.fn("resolveUpstreamCommitHash")(function* (
+  repoRoot: string,
+) {
+  const result = yield* spawnAndCollectOutput(
+    ChildProcess.make("git", ["merge-base", "HEAD", "upstream/main"], { cwd: repoRoot }),
+  ).pipe(Effect.orElseSucceed(() => ({ stdout: "", stderr: "", exitCode: 1 })));
+  const hash = result.stdout.trim();
+  return result.exitCode === 0 && /^[0-9a-f]{40}$/i.test(hash) ? hash.toLowerCase() : "";
+});
+
 const resolvePythonForNodeGyp = Effect.fn("resolvePythonForNodeGyp")(function* () {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -3416,6 +3426,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   const appVersion = options.version ?? serverPackageJson.version;
   const iconAssets = resolveDesktopBuildIconAssets(appVersion);
   const commitHash = yield* resolveGitCommitHash(repoRoot);
+  const upstreamCommitHash = yield* resolveUpstreamCommitHash(repoRoot);
   const mkdir = options.keepStage ? fs.makeTempDirectory : fs.makeTempDirectoryScoped;
   const stageRoot = yield* mkdir({
     prefix: `t3code-desktop-${options.platform}-stage-`,
@@ -3432,11 +3443,19 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
 
   if (!options.skipBuild) {
     yield* Effect.log("[desktop-artifact] Building desktop/server/web artifacts...");
-    const spawnCommand = yield* resolveSpawnCommand("vp", ["run", "build:desktop"]);
+    const buildArtifactsEnv = {
+      ...process.env,
+      APP_VERSION: appVersion,
+      T3CODE_UPSTREAM_COMMIT_HASH: upstreamCommitHash,
+    };
+    const spawnCommand = yield* resolveSpawnCommand("vp", ["run", "build:desktop"], {
+      env: buildArtifactsEnv,
+    });
     yield* runCommand(
       ChildProcess.make(spawnCommand.command, spawnCommand.args, {
         cwd: repoRoot,
         shell: spawnCommand.shell,
+        env: buildArtifactsEnv,
       }),
       { label: "vp run build:desktop", verbose: options.verbose },
     );

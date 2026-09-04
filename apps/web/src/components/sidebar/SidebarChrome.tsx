@@ -33,6 +33,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { RelewiseBacklog } from "./RelewiseBacklog";
+import { SidebarUpstreamStatus } from "./SidebarUpstreamStatus";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
 
 export const SidebarChromeHeader = memo(function SidebarChromeHeader({
@@ -215,6 +216,7 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           />
         </>
       )}
+      <SidebarUpstreamStatus />
       <SidebarUpdatePill />
     </SidebarMenu>
   );
