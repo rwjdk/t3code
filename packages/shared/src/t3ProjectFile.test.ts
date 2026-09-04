@@ -45,6 +45,7 @@ describe("buildT3ProjectFileJsonSchema", () => {
     expect(script?.required).toEqual(["name", "command"]);
     expect(Object.keys(script?.properties ?? {}).sort()).toEqual([
       "autoOpenPreview",
+      "background",
       "command",
       "icon",
       "name",
