@@ -35,6 +35,13 @@ export const relewiseHttpApiLayer = HttpApiBuilder.group(
         }),
       )
       .handle(
+        "refreshTrelloCards",
+        Effect.fn("environment.relewise.refreshTrelloCards")(function* (args) {
+          yield* authorize(args.headers.authorization);
+          return yield* handleLoad(backlog.refreshAll);
+        }),
+      )
+      .handle(
         "backlog",
         Effect.fn("environment.relewise.backlog")(function* (args) {
           yield* annotateEnvironmentRequest(args.endpoint.name);

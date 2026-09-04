@@ -14,3 +14,7 @@ When an active thread's first message contains a Trello card URL, its web and de
 entry shows a Trello button in place of the provider icon. Select it to see the current card title,
 Trello list, labels, description, checklists, and status details in the same card-details dialog used
 by the Relewise backlog. Card details come from the configured Relewise Trello integration.
+
+The Trello sidebar section shows all cards assigned to the configured member. Cards are grouped by
+their Trello list, with higher-positioned lists first. Each list group can be collapsed independently.
+The In Progress group starts expanded; all other list groups start collapsed.

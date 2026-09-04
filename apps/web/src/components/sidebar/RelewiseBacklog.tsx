@@ -6,7 +6,7 @@ import { truncate } from "@t3tools/shared/String";
 import { useNavigate } from "@tanstack/react-router";
 import * as Effect from "effect/Effect";
 import { ChevronDownIcon, PlayIcon, RefreshCwIcon } from "lucide-react";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 
 import { markPromotedDraftThreadByRef, useComposerDraftStore } from "../../composerDraftStore";
 import { PrimaryEnvironmentHttpClient } from "../../environments/primary/httpClient";
@@ -38,6 +38,7 @@ import {
   writeRelewiseProjectMatch,
 } from "./relewiseProjectMatches";
 import { RelewiseCardDetailsDialog } from "./RelewiseCardDetailsDialog";
+import { groupRelewiseTrelloCards } from "./relewiseTrelloCards";
 
 type LoadState =
   | { readonly status: "loading" }
@@ -48,6 +49,9 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [refreshing, setRefreshing] = useState(false);
   const [expanded, setExpanded] = useState(true);
+  const [listExpandedOverrides, setListExpandedOverrides] = useState<ReadonlyMap<string, boolean>>(
+    () => new Map(),
+  );
   const [startingCardId, setStartingCardId] = useState<string | null>(null);
   const [detailsCard, setDetailsCard] = useState<RelewiseBacklogCard | null>(null);
   const [pickerCard, setPickerCard] = useState<RelewiseBacklogCard | null>(null);
@@ -59,12 +63,16 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const primaryProviders = useAtomValue(primaryServerProvidersAtom);
   const { userEmail } = useRelewiseSettings();
+  const groups = useMemo(
+    () => (state.status === "ready" ? groupRelewiseTrelloCards(state.cards) : []),
+    [state],
+  );
 
   useEffect(() => {
     let active = true;
     void runPrimaryHttp(
       PrimaryEnvironmentHttpClient.pipe(
-        Effect.flatMap((client) => client.relewise.backlog({ headers: {} })),
+        Effect.flatMap((client) => client.relewise.trelloCards({ headers: {} })),
       ),
     ).then(
       (result) => active && setState({ status: "ready", cards: result.cards }),
@@ -79,7 +87,7 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
     setRefreshing(true);
     void runPrimaryHttp(
       PrimaryEnvironmentHttpClient.pipe(
-        Effect.flatMap((client) => client.relewise.refreshBacklog({ headers: {} })),
+        Effect.flatMap((client) => client.relewise.refreshTrelloCards({ headers: {} })),
       ),
     )
       .then(
@@ -286,7 +294,7 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
           className="flex size-5 items-center justify-center rounded text-muted-foreground/50 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
           onClick={() => setExpanded((value) => !value)}
           aria-expanded={expanded}
-          aria-controls="trello-backlog-cards"
+          aria-controls="trello-cards"
           aria-label={expanded ? "Collapse Trello" : "Expand Trello"}
         >
           <ChevronDownIcon
@@ -295,63 +303,94 @@ export const RelewiseBacklog = memo(function RelewiseBacklog() {
           />
         </button>
       </div>
-      <ul
-        id="trello-backlog-cards"
-        className={cn("max-h-72 space-y-0.5 overflow-y-auto", !expanded && "hidden")}
+      <div
+        id="trello-cards"
+        className={cn("max-h-72 space-y-1 overflow-y-auto", !expanded && "hidden")}
       >
-        {state.cards.map((card) => (
-          <li
-            key={card.id}
-            className="group/trello-card grid min-h-8 grid-cols-[minmax(0,1fr)_2rem_1.25rem] items-center gap-2 rounded-md px-2 py-1.5 hover:bg-sidebar-row-hover"
-            role="button"
-            tabIndex={0}
-            onClick={() => setDetailsCard(card)}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== " ") return;
-              event.preventDefault();
-              setDetailsCard(card);
-            }}
-          >
-            <span className="min-w-0 truncate text-xs text-sidebar-foreground">{card.title}</span>
-            <span className="mt-0.5 flex self-start items-center justify-end gap-0.5">
-              {card.labels.map((label) => (
-                <span
-                  key={label.id}
-                  className="h-4 w-1.5 rounded-none bg-sidebar-accent ring-1 ring-inset ring-black/10"
-                  style={
-                    label.backgroundColor === null
-                      ? undefined
-                      : { backgroundColor: label.backgroundColor }
-                  }
-                  aria-label={label.name}
+        {groups.map((group) => {
+          const listExpanded =
+            listExpandedOverrides.get(group.listId) ?? group.listName === "In Progress";
+          const cardsId = `trello-list-${group.listId}`;
+          return (
+            <section key={group.listId} aria-labelledby={`${cardsId}-heading`}>
+              <button
+                id={`${cardsId}-heading`}
+                type="button"
+                className="flex h-7 w-full items-center gap-1.5 rounded px-2 text-xs font-medium text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
+                onClick={() =>
+                  setListExpandedOverrides((current) => {
+                    const next = new Map(current);
+                    next.set(group.listId, !listExpanded);
+                    return next;
+                  })
+                }
+                aria-expanded={listExpanded}
+                aria-controls={cardsId}
+              >
+                <ChevronDownIcon
+                  aria-hidden
+                  className={cn("size-3 transition-transform", listExpanded && "rotate-180")}
                 />
-              ))}
-            </span>
-            <button
-              type="button"
-              className="flex size-5 items-center justify-center rounded text-sidebar-muted-foreground opacity-0 hover:bg-sidebar-accent hover:text-sidebar-foreground group-hover/trello-card:opacity-100 focus-visible:opacity-100"
-              onClick={(event) => {
-                event.stopPropagation();
-                startCard(card);
-              }}
-              onKeyDown={(event) => event.stopPropagation()}
-              disabled={startingCardId !== null}
-              aria-label={`Start working on this: ${card.title}`}
-            >
-              <PlayIcon className="size-3" fill="currentColor" />
-            </button>
-          </li>
-        ))}
-      </ul>
+                <span className="min-w-0 truncate">{group.listName}</span>
+                <span className="ml-auto text-sidebar-muted-foreground/60">
+                  {group.cards.length}
+                </span>
+              </button>
+              <ul id={cardsId} className={cn("space-y-0.5", !listExpanded && "hidden")}>
+                {group.cards.map((card) => (
+                  <li
+                    key={card.id}
+                    className="group/trello-card grid min-h-8 grid-cols-[minmax(0,1fr)_2rem_1.25rem] items-center gap-2 rounded-md px-2 py-1.5 pl-6 hover:bg-sidebar-row-hover"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetailsCard(card)}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      event.preventDefault();
+                      setDetailsCard(card);
+                    }}
+                  >
+                    <span className="min-w-0 truncate text-xs text-sidebar-foreground">
+                      {card.title}
+                    </span>
+                    <span className="mt-0.5 flex self-start items-center justify-end gap-0.5">
+                      {card.labels.map((label) => (
+                        <span
+                          key={label.id}
+                          className="h-4 w-1.5 rounded-none bg-sidebar-accent ring-1 ring-inset ring-black/10"
+                          style={
+                            label.backgroundColor === null
+                              ? undefined
+                              : { backgroundColor: label.backgroundColor }
+                          }
+                          aria-label={label.name}
+                        />
+                      ))}
+                    </span>
+                    <button
+                      type="button"
+                      className="flex size-5 items-center justify-center rounded text-sidebar-muted-foreground opacity-0 hover:bg-sidebar-accent hover:text-sidebar-foreground group-hover/trello-card:opacity-100 focus-visible:opacity-100"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        startCard(card);
+                      }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      disabled={startingCardId !== null}
+                      aria-label={`Start working on this: ${card.title}`}
+                    >
+                      <PlayIcon className="size-3" fill="currentColor" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
       <RelewiseCardDetailsDialog
         card={detailsCard}
         onOpenChange={(open) => !open && setDetailsCard(null)}
-        onArchived={(cards) =>
-          setState({
-            status: "ready",
-            cards: cards.filter((card) => card.listName === "Backlog"),
-          })
-        }
+        onArchived={(cards) => setState({ status: "ready", cards })}
         footer={
           <Button
             onClick={() => {

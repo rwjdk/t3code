@@ -581,7 +581,10 @@ export const RelewiseBacklogCard = Schema.Struct({
   title: Schema.String,
   description: Schema.NullOr(Schema.String),
   boardName: Schema.String,
+  listId: Schema.String,
   listName: Schema.String,
+  listPosition: Schema.Number,
+  cardPosition: Schema.Number,
   labels: Schema.Array(RelewiseBacklogLabel),
   checklists: Schema.Array(RelewiseBacklogChecklist),
   createdAt: Schema.String,
@@ -613,6 +616,17 @@ export type RelewiseArchiveCardInput = typeof RelewiseArchiveCardInput.Type;
 export class EnvironmentRelewiseHttpApi extends HttpApiGroup.make("relewise")
   .add(
     HttpApiEndpoint.get("trelloCards", "/api/relewise/trello/cards", {
+      headers: OptionalBearerHeaders,
+      success: RelewiseBacklogResult,
+      error: [
+        EnvironmentAuthInvalidError,
+        EnvironmentScopeRequiredError,
+        EnvironmentHttpInternalServerError,
+      ],
+    }).middleware(EnvironmentAuthenticatedAuth),
+  )
+  .add(
+    HttpApiEndpoint.post("refreshTrelloCards", "/api/relewise/trello/cards/refresh", {
       headers: OptionalBearerHeaders,
       success: RelewiseBacklogResult,
       error: [

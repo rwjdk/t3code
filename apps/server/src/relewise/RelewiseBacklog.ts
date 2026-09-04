@@ -58,6 +58,7 @@ const HubTrelloCard = Schema.Struct({
   list: HubIdName,
   labels: Schema.Array(HubIdName),
   url: Schema.String,
+  listPosition: Schema.Union([Schema.Number, Schema.NumberFromString]),
   cardPosition: Schema.Union([Schema.Number, Schema.NumberFromString]),
   created: Schema.String,
   start: Schema.NullOr(Schema.String),
@@ -91,13 +92,19 @@ export function selectTrelloCards(
 ): ReadonlyArray<RelewiseBacklogCard> {
   const labelsById = new Map(labels.map((label) => [label.id, label]));
   return [...cards]
-    .sort((left, right) => left.cardPosition - right.cardPosition)
+    .sort(
+      (left, right) =>
+        right.listPosition - left.listPosition || left.cardPosition - right.cardPosition,
+    )
     .map((card) => ({
       id: card.id,
       title: card.name,
       description: card.description,
       boardName: card.board.name,
+      listId: card.list.id,
       listName: card.list.name,
+      listPosition: card.listPosition,
+      cardPosition: card.cardPosition,
       labels: card.labels.flatMap((cardLabel): ReadonlyArray<RelewiseBacklogLabel> => {
         if (cardLabel.name.length === 0) return [];
         const label = labelsById.get(cardLabel.id);
@@ -159,6 +166,7 @@ export class RelewiseBacklog extends Context.Service<
   {
     readonly cards: Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
     readonly allCards: Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
+    readonly refreshAll: Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
     readonly refresh: Effect.Effect<ReadonlyArray<RelewiseBacklogCard>, RelewiseBacklogError>;
     readonly startCard: (
       cardId: string,
@@ -235,7 +243,7 @@ export class RelewiseBacklog extends Context.Service<
           Effect.asVoid,
           Effect.mapError((cause) => new RelewiseBacklogError({ cause })),
         );
-        return (yield* cache.refresh).filter((card) => card.listName === BACKLOG_LIST_NAME);
+        return yield* cache.refresh;
       });
       const archiveCard = Effect.fn("RelewiseBacklog.archiveCard")(function* (cardId: string) {
         yield* client.execute(HttpClientRequest.put(archiveCardUrl(cardId))).pipe(
@@ -244,7 +252,14 @@ export class RelewiseBacklog extends Context.Service<
         );
         return yield* cache.refresh;
       });
-      return RelewiseBacklog.of({ cards, allCards: cache.cards, refresh, startCard, archiveCard });
+      return RelewiseBacklog.of({
+        cards,
+        allCards: cache.cards,
+        refreshAll: cache.refresh,
+        refresh,
+        startCard,
+        archiveCard,
+      });
     }),
   );
 }
